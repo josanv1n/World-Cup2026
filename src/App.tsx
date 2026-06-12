@@ -9,7 +9,7 @@ import StandingsTable from './components/StandingsTable';
 import BungBolaChat from './components/BungBolaChat';
 import AppsScriptPortal from './components/AppsScriptPortal';
 import InteractiveBall from './components/InteractiveBall';
-import { Trophy, Compass, Star, FileCode, MessageSquareCode, CalendarDays, RefreshCw, Sparkles, Tv, HelpCircle, Heart } from 'lucide-react';
+import { Trophy, Compass, Star, FileCode, MessageSquareCode, CalendarDays, RefreshCw, Sparkles, Tv, HelpCircle, Heart, MessageSquare } from 'lucide-react';
 
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
@@ -20,6 +20,7 @@ export default function App() {
   const [apiError, setApiError] = useState(false);
   const [isFlashscoreDown, setIsFlashscoreDown] = useState(false);
   const [showApiWarning, setShowApiWarning] = useState(true);
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Fetch match results and standings on startup
   const fetchAllData = async () => {
@@ -546,6 +547,85 @@ export default function App() {
 
         </div>
 
+        {/* DONASI SEKSI - JOHAN */}
+        <section id="donasi-johan-container" className="w-full mt-10">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-[#001233] via-[#0b1b3d] to-[#001233] border border-white/10 shadow-2xl relative overflow-hidden">
+            <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-cyan-400/10 rounded-full blur-[40px] pointer-events-none" />
+            <div className="absolute -left-10 -top-10 w-40 h-40 bg-pink-500/10 rounded-full blur-[40px] pointer-events-none" />
+            
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                  <span className="text-xs font-mono tracking-widest bg-yellow-500/20 text-yellow-400 px-2.5 py-0.5 rounded-full border border-yellow-500/30 uppercase font-black animate-pulse flex items-center gap-1">
+                    <Sparkles size={11} /> Support Developer
+                  </span>
+                  <span className="text-xs font-mono tracking-widest bg-cyan-400/20 text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-400/30 uppercase font-black">
+                    Anti Lag-Lag Club
+                  </span>
+                </div>
+                <h3 className="text-xl sm:text-2xl font-display font-black text-white italic uppercase tracking-tight">
+                  Sokong Server Biar Tetep <span className="text-pink-400">Gaspol!</span> 🚀
+                </h3>
+                <p className="text-slate-300 text-sm mt-2 max-w-2xl leading-relaxed">
+                  Halo bro-sist! Biar info skor tercepat, live standing, dan si kecerdasan buatan <span className="text-cyan-400 font-bold">Bung Bola AI</span> ini kagak ngadat gara-gara server kepenuhan, yuk sawer tipis-tipis seikhlasnya buat admin kesayangan kita, bang <strong className="hover:text-cyan-400 transition-colors uppercase tracking-wider font-extrabold text-yellow-300">JOHAN</strong>! Biar doi punya amunisi kopi hitam & gorengan buat begadang nemenin lo nonton laga seru! ☕⚽🔥
+                </p>
+              </div>
+
+              {/* Donation Method Widget */}
+              <div className="flex flex-col items-center bg-black/40 p-5 rounded-2xl border border-white/5 w-full md:w-auto md:min-w-[320px] shrink-0">
+                <span className="text-xs font-mono font-bold text-slate-400 mb-3 uppercase tracking-wider">
+                  Silahkan Di-Sawer Lewat:
+                </span>
+                
+                {/* Brand Logos Grid with high fidelity */}
+                <div className="grid grid-cols-2 gap-2 w-full mb-4">
+                  <div className="flex items-center justify-center gap-1.5 bg-[#EE4D2D]/10 border border-[#EE4D2D]/30 py-2 px-3 rounded-lg text-[#EE4D2D] font-black text-xs select-none shadow hover:bg-[#EE4D2D]/20 transition-all cursor-default">
+                    <span className="text-sm">🟠</span> ShopeePay
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 bg-[#00AED6]/10 border border-[#00AED6]/30 py-2 px-3 rounded-lg text-[#00AED6] font-black text-xs select-none shadow hover:bg-[#00AED6]/20 transition-all cursor-default">
+                    <span className="text-sm">🟢</span> GoPay
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 bg-[#4D2A86]/10 border border-[#4D2A86]/30 py-2 px-3 rounded-lg text-[#bc99fa] font-black text-xs select-none shadow hover:bg-[#4D2A86]/20 transition-all cursor-default">
+                    <span className="text-sm">🟣</span> OVO
+                  </div>
+                  <div className="flex items-center justify-center gap-1.5 bg-[#008AE6]/10 border border-[#008AE6]/30 py-2 px-3 rounded-lg text-[#008AE6] font-black text-xs select-none shadow hover:bg-[#008AE6]/20 transition-all cursor-default">
+                    <span className="text-sm">🔵</span> DANA
+                  </div>
+                </div>
+
+                {/* Copiable Phone number box */}
+                <div className="w-full bg-[#111827] border border-white/10 rounded-xl p-3 flex flex-col items-center justify-center text-center relative group">
+                  <span className="text-[10px] font-mono text-slate-500 uppercase tracking-widest mb-1">
+                    No. Telpon / Akun E-Wallet
+                  </span>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-mono font-black text-green-400 tracking-wider">
+                      0813-41-300-100
+                    </span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText("0813-41-300-100");
+                        setCopySuccess(true);
+                        setTimeout(() => setCopySuccess(false), 2000);
+                      }}
+                      className="text-slate-400 hover:text-white p-1 rounded hover:bg-white/10 transition-all focus:outline-none"
+                      title="Salin Nomor"
+                    >
+                      {copySuccess ? (
+                        <span className="text-xs text-green-400 font-bold px-1">Disalin!</span>
+                      ) : (
+                        <span className="text-[10px] bg-white/5 border border-white/10 px-1.5 py-0.5 rounded text-slate-300 hover:border-cyan-400 tracking-wide font-bold">Salin</span>
+                      )}
+                    </button>
+                  </div>
+                  <span className="text-[9px] text-slate-500 font-mono mt-1">Nama Penerima: JOHAN</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
       </main>
 
       {/* FOOTER METRIC BRAND */}
@@ -571,6 +651,78 @@ export default function App() {
 
       {/* FLOAT ELEMENT: Real Bouncing/Kickable Soccer Ball on Screen Bottom Left */}
       <InteractiveBall />
+
+      {/* FLOATING WHATSAPP CHAT WIDGET - SLANGY & INTERACTIVE */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.5, y: 50 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ delay: 1, type: "spring", stiffness: 200 }}
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-3 group select-none"
+      >
+        {/* Animated Pop-Up / Chat bubble with gaul slang */}
+        <motion.div
+          animate={{
+            y: [0, -4, 0],
+          }}
+          transition={{
+            duration: 3,
+            repeat: Infinity,
+            ease: "easeInOut",
+          }}
+          className="hidden sm:flex bg-slate-950/95 backdrop-blur-md border border-white/10 text-white rounded-2xl py-2 px-3.5 shadow-2xl items-center gap-2 max-w-[220px] transition-all duration-300 group-hover:border-green-500/40 opacity-90 group-hover:opacity-100 relative"
+        >
+          {/* Green dot notification */}
+          <div className="absolute right-2 top-2 w-2 h-2 bg-green-400 rounded-full animate-ping pointer-events-none" />
+          
+          <div className="text-left">
+            <p className="text-[10px] font-mono font-bold text-green-400 uppercase tracking-widest leading-none mb-1">
+              Bung Bola Live! 🟢
+            </p>
+            <p className="text-xs text-slate-200 font-sans font-medium leading-normal">
+              Ada kendala? <span className="text-yellow-300 font-black">PC WA</span> Bang Johan, Gaskin! 🔥
+            </p>
+          </div>
+          {/* Speech bubble pointer */}
+          <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-0 h-0 border-t-[6px] border-t-transparent border-b-[6px] border-b-transparent border-l-[6px] border-l-slate-950" />
+        </motion.div>
+
+        {/* The Float Button Circle styled like Whatsapp */}
+        <motion.a
+          href="https://wa.me/6281341300100"
+          target="_blank"
+          rel="noopener noreferrer"
+          whileHover={{ scale: 1.12 }}
+          whileTap={{ scale: 0.92 }}
+          animate={{
+            y: [0, -6, 0],
+            rotate: [0, 4, -4, 0],
+          }}
+          transition={{
+            y: {
+              duration: 2.2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            },
+            rotate: {
+              duration: 4.5,
+              repeat: Infinity,
+              ease: "easeInOut",
+            },
+          }}
+          className="w-14 h-14 rounded-full bg-gradient-to-tr from-[#128C7E] via-[#25D366] to-[#4afb8c] text-white flex items-center justify-center shadow-[0_8px_30px_rgb(37,211,102,0.3)] hover:shadow-[0_8px_40px_rgb(37,211,102,0.55)] border border-white/20 relative cursor-pointer"
+          title="Hubungi Johan via WhatsApp"
+        >
+          <MessageSquare size={26} className="fill-white/10 stroke-[2.25px]" />
+          
+          {/* Outer Ripple Ring */}
+          <span className="absolute -inset-1 rounded-full border-2 border-green-500/30 animate-ping pointer-events-none" />
+          
+          {/* Mini Notification Badge */}
+          <span className="absolute top-0.5 right-0.5 w-3.5 h-3.5 bg-rose-500 text-[8px] font-black font-sans rounded-full flex items-center justify-center border border-white text-white shadow-sm leading-none animate-pulse">
+            1
+          </span>
+        </motion.a>
+      </motion.div>
 
     </div>
   );
