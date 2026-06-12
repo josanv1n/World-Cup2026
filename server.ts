@@ -503,10 +503,93 @@ function finalizeStandings(homeTeam: string, awayTeam: string, homeScore: number
 }
 
 
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || process.env.VITE_APPS_SCRIPT_URL || "";
+
+// Sync live standings and results dynamically with deployed Google Apps Script (scraped from flashscore URL)
+async function syncDataWithAppsScript() {
+  if (!APPS_SCRIPT_URL) return;
+  try {
+    // 1. Sync Matches (Get Scores Action)
+    const responseScores = await fetch(`${APPS_SCRIPT_URL}?action=getScores`);
+    if (responseScores.ok) {
+      const text = await responseScores.text();
+      
+      // Jika response mengandung HTML (misalnya halaman login akun Google / izin akses ditolak)
+      if (text.trim().startsWith("<") || text.includes("<html") || text.includes("<!DOCTYPE")) {
+        console.log("[Apps Script Sync] Catatan: Web App mengembalikan format HTML. Sinkronisasi otomatis ditangguhkan.");
+        return;
+      }
+
+      try {
+        const data = JSON.parse(text);
+        if (data && Array.isArray(data.matches)) {
+          console.log(`[Apps Script Sync] Sukses mensinkronkan ${data.matches.length} laga.`);
+          data.matches.forEach((liveMatch: any) => {
+            const matchObj = matches.find(m => m.id === liveMatch.id || m.homeTeam === liveMatch.homeTeam);
+            if (matchObj) {
+              matchObj.homeScore = liveMatch.homeScore !== undefined ? liveMatch.homeScore : matchObj.homeScore;
+              matchObj.awayScore = liveMatch.awayScore !== undefined ? liveMatch.awayScore : matchObj.awayScore;
+              matchObj.status = liveMatch.status || matchObj.status;
+              if (liveMatch.status === "Selesai") {
+                matchObj.isLive = false;
+              } else if (liveMatch.status && (liveMatch.status.includes("Live") || liveMatch.status.includes("'"))) {
+                matchObj.isLive = true;
+              }
+            }
+          });
+        }
+      } catch (parseErr) {
+        console.log("[Apps Script Sync] Catatan: Data laga tidak dalam format JSON yang valid.");
+      }
+    }
+
+    // 2. Sync Standings (Get Standings Action)
+    const responseStandings = await fetch(`${APPS_SCRIPT_URL}?action=getStandings`);
+    if (responseStandings.ok) {
+      const text = await responseStandings.text();
+      
+      // Jika response mengandung HTML
+      if (text.trim().startsWith("<") || text.includes("<html") || text.includes("<!DOCTYPE")) {
+        return;
+      }
+
+      try {
+        const liveStandings = JSON.parse(text);
+        if (Array.isArray(liveStandings) && liveStandings.length > 0) {
+          console.log("[Apps Script Sync] Sinkronisasi klasemen klub selesai.");
+          groupStandings = groupStandings.map(group => {
+            const updatedTeams = group.teams.map(team => {
+              const liveTeam = liveStandings.find((t: any) => t.team === team.teamName || t.teamName === team.teamName);
+              if (liveTeam) {
+                return {
+                  ...team,
+                  played: liveTeam.main !== undefined ? liveTeam.main : team.played,
+                  pts: liveTeam.poin !== undefined ? liveTeam.poin : team.pts
+                };
+              }
+              return team;
+            });
+            const sortedTeams = [...updatedTeams].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+            const rankedTeams = sortedTeams.map((t, idx) => ({ ...t, rank: idx + 1 }));
+            return { ...group, teams: rankedTeams };
+          });
+        }
+      } catch (parseErr) {
+        console.log("[Apps Script Sync] Catatan: Klasemen pasif.");
+      }
+    }
+  } catch (err) {
+    console.log("[Apps Script Sync] Catatan: Hubungan asinkronus ke Apps Script belum aktif.");
+  }
+}
+
+
 // --- REST API ENDPOINTS ---
 
 // 1. Get matches
-app.get("/api/matches", (req, res) => {
+app.get("/api/matches", async (req, res) => {
+  // Sync before responder if apps script is active
+  await syncDataWithAppsScript();
   res.json({
     matches,
     serverTime: new Date().toISOString()
@@ -514,7 +597,9 @@ app.get("/api/matches", (req, res) => {
 });
 
 // 2. Get standings
-app.get("/api/standings", (req, res) => {
+app.get("/api/standings", async (req, res) => {
+  // Sync before responder if apps script is active
+  await syncDataWithAppsScript();
   res.json({
     standings: groupStandings
   });
@@ -717,16 +802,67 @@ function generateGeminiAnalysis(matchId) {
 }
 
 function getWorldCupStandings() {
-  return [
-    { team: "Meksiko", main: 1, poin: 3 },
-    { team: "Korea Selatan", main: 1, poin: 3 },
-    { team: "Indonesia", main: 1, poin: 1 },
-    { team: "Belanda", main: 1, poin: 1 },
-    { team: "Kanada", main: 1, poin: 1 },
-    { team: "Swedia", main: 1, poin: 1 },
-    { team: "Afrika Selatan", main: 1, poin: 0 },
-    { team: "Republik Ceko", main: 1, poin: 0 }
-  ];
+  var standings = [];
+  try {
+    // 1. Fetch Flashscore Group Stage table feed otomatis
+    var stageId = "SbLsX4y7";
+    var feedUrl = "https://www.flashscore.co.id/x/feed/df_to_1_" + stageId + "_";
+    
+    var response = UrlFetchApp.fetch(feedUrl, {
+      "method": "get",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "X-Referer": "https://www.flashscore.co.id/"
+      },
+      "muteHttpExceptions": true
+    });
+    
+    var text = response.getContentText();
+    if (response.getResponseCode() === 200 && text && text.indexOf("TE~") !== -1) {
+      var segments = text.split("¬");
+      var currentTeam = null;
+      
+      for (var i = 0; i < segments.length; i++) {
+        var parts = segments[i].split("~");
+        var cmd = parts[0];
+        
+        if (cmd === "TE") {
+          if (currentTeam && currentTeam.team) {
+            standings.push(currentTeam);
+          }
+          currentTeam = { team: "", main: 0, poin: 0 };
+        } else if (currentTeam) {
+          if (cmd === "TN") {
+            currentTeam.team = parts[1];
+          } else if (cmd === "TM") {
+            currentTeam.main = parseInt(parts[1], 10) || 0;
+          } else if (cmd === "TP") {
+            currentTeam.poin = parseInt(parts[1], 10) || 0;
+          }
+        }
+      }
+      if (currentTeam && currentTeam.team) {
+        standings.push(currentTeam);
+      }
+    }
+  } catch (err) {
+    Logger.log("Gagal mengambil data real-time: " + err.toString());
+  }
+
+  // Fallback / standard data yang realistis jika crawling gagal atau sedang diblokir Cloudflare
+  if (standings.length === 0) {
+    standings = [
+      { team: "Meksiko", main: 1, poin: 3 },
+      { team: "Korea Selatan", main: 1, poin: 3 },
+      { team: "Indonesia", main: 1, poin: 1 },
+      { team: "Belanda", main: 1, poin: 1 },
+      { team: "Kanada", main: 1, poin: 1 },
+      { team: "Swedia", main: 1, poin: 1 },
+      { team: "Afrika Selatan", main: 1, poin: 0 },
+      { team: "Republik Ceko", main: 1, poin: 0 }
+    ];
+  }
+  return standings;
 }
 
 function initialSetup() {

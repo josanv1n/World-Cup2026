@@ -139,13 +139,15 @@ export default function App() {
           <div className="flex items-center gap-4 relative z-10">
             {/* High Density custom badge frame logo */}
             <motion.div
-              whileHover={{ rotate: 360, scale: 1.1 }}
-              transition={{ duration: 1 }}
-              className="w-16 h-16 rounded-xl bg-gradient-to-br from-cyan-400 via-pink-500 to-yellow-400 p-[2px] shadow-lg flex items-center justify-center cursor-pointer select-none"
+              whileHover={{ scale: 1.08 }}
+              className="w-20 h-20 flex items-center justify-center cursor-pointer select-none shrink-0"
             >
-              <div className="w-full h-full rounded-lg bg-[#020617] flex items-center justify-center text-xl font-black italic text-cyan-400">
-                26
-              </div>
+              <img 
+                src="https://josanvin.github.io/josanvin/img/WorldCup2026.png" 
+                alt="FIFA World Cup 2026 Logo" 
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
             </motion.div>
 
             <div>
@@ -228,20 +230,6 @@ export default function App() {
             >
               <MessageSquareCode size={15} />
               <span>Tanya AI Bung Bola</span>
-            </button>
-
-            {/* Google Apps Script Integration Tab */}
-            <button
-              id="navigation-tab-gas"
-              onClick={() => setActiveTab('gas')}
-              className={`px-4 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm font-display font-black flex items-center gap-2 transition-all focus:outline-none relative ${
-                activeTab === 'gas' 
-                  ? 'bg-white/5 border border-cyan-400/40 text-cyan-400 shadow-lg font-extrabold cyan-glow' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
-            >
-              <FileCode size={15} />
-              <span>Code.GS Apps Script</span>
             </button>
 
           </nav>
