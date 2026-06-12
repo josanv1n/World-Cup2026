@@ -14,20 +14,25 @@ import { Trophy, Compass, Star, FileCode, MessageSquareCode, CalendarDays, Refre
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [standings, setStandings] = useState<Standing[]>(initialStandings);
-  const [selectedMatchId, setSelectedMatchId] = useState<string | null>("m4"); // Indonesia vs Belanda by default!
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>("m1"); // Meksiko vs Afrika Selatan by default!
   const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'gas'>('scores');
   const [refreshSeconds, setRefreshSeconds] = useState(8);
   const [apiError, setApiError] = useState(false);
+  const [isFlashscoreDown, setIsFlashscoreDown] = useState(false);
   const [showApiWarning, setShowApiWarning] = useState(true);
 
   // Fetch match results and standings on startup
   const fetchAllData = async () => {
     try {
+      let fsDown = false;
       const matchRes = await fetch("/api/matches");
       if (!matchRes.ok) throw new Error();
       const matchData = await matchRes.json();
       if (matchData.matches && matchData.matches.length > 0) {
         setMatches(matchData.matches);
+      }
+      if (matchData.isFlashscoreDown) {
+        fsDown = true;
       }
 
       const standRes = await fetch("/api/standings");
@@ -36,10 +41,15 @@ export default function App() {
       if (standData.standings && standData.standings.length > 0) {
         setStandings(standData.standings);
       }
+      if (standData.isFlashscoreDown) {
+        fsDown = true;
+      }
 
+      setIsFlashscoreDown(fsDown);
       setApiError(false);
     } catch {
       setApiError(true);
+      setIsFlashscoreDown(true);
     }
   };
 
@@ -434,13 +444,21 @@ export default function App() {
         {/* MAIN TAB SWITCH VIEWPORT AREA */}
         <div className="w-full relative min-h-[420px]">
           
-          {apiError && showApiWarning && (
+          {(apiError || isFlashscoreDown) && showApiWarning && (
             <div className="bg-red-950/40 border border-red-500/30 p-4 rounded-xl text-xs text-red-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 select-none relative overflow-hidden">
               <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />
               <span className="flex items-start md:items-center gap-2 pl-2">
                 <span className="text-sm shrink-0">⚠️</span>
                 <span>
-                  <strong>Konektivitas Server Latar Belakang Nonaktif (Normal di Vercel):</strong> Aplikasi dialihkan dengan aman ke <strong>Simulator Ticker Lokal</strong>. Skor langsung, statistik pertandingan, dan kejadian drama gol tetap berjalan dinamis di browser Anda secara independen!
+                  {isFlashscoreDown && !apiError ? (
+                    <>
+                      <strong>Website Acuan (Flashscore) sedang down atau mengalami masalah konektivitas:</strong> Sistem beralih secara otomatis ke <strong>Simulator Ticker Lokal</strong>. Skor langsung dan statistik pertandingan tetap berjalan dinamis!
+                    </>
+                  ) : (
+                    <>
+                      <strong>Website Acuan (Flashscore) offline atau Server Latar Belakang Nonaktif (Normal di Vercel):</strong> Aplikasi dialihkan dengan aman ke <strong>Simulator Ticker Lokal</strong>. Skor langsung, statistik pertandingan, dan kejadian drama gol tetap berjalan dinamis di browser Anda secara independen!
+                    </>
+                  )}
                 </span>
               </span>
               <button 

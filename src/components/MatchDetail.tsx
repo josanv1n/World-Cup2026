@@ -105,9 +105,14 @@ export default function MatchDetail({ match }: MatchDetailProps) {
 
           {/* Verses & score */}
           <div className="col-span-4 flex flex-col items-center justify-center">
-            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono font-bold mb-2 uppercase">
+            <span className="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full font-mono font-bold mb-1 uppercase">
               {match.group}
             </span>
+            {match.date && (
+              <span className="text-[10px] text-slate-400 font-semibold tracking-wide mb-2 leading-none">
+                {match.date}
+              </span>
+            )}
             <div className="flex items-center gap-3">
               <span className={`text-3xl sm:text-4xl font-mono font-black ${
                 match.isLive ? 'text-cyan-400 animate-pulse' : 'text-cyan-400 text-transparent bg-clip-text bg-gradient-to-b from-cyan-300 to-cyan-500'

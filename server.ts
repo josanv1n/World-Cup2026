@@ -4,6 +4,7 @@ import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { Match, MatchEvent, Standing } from "./src/types";
+import { initialMatches as JADWAL_MATCHES, calculateStandings } from "./src/Jadwal";
 
 dotenv.config();
 
@@ -30,233 +31,14 @@ try {
 }
 
 // Global state for Simulated Matches
-let matches: Match[] = [
-  {
-    id: "m1",
-    group: "Grup A",
-    homeTeam: "Meksiko",
-    homeFlag: "🇲🇽",
-    awayTeam: "Afrika Selatan",
-    awayFlag: "🇿🇦",
-    homeScore: 2,
-    awayScore: 0,
-    status: "Selesai",
-    minute: 90,
-    isLive: false,
-    date: "11 Juni 2026",
-    time: "20:00 UTC",
-    stadium: "Estadio Azteca",
-    city: "Mexico City",
-    possession: [58, 42],
-    shots: [14, 6],
-    fouls: [10, 15],
-    yellowCards: [1, 3],
-    redCards: [0, 1],
-    events: [
-      { id: "e1", minute: 12, type: "goal", team: "home", player: "R. Jiménez", assistant: "H. Lozano" },
-      { id: "e2", minute: 40, type: "yellow_card", team: "away", player: "T. Mokoena" },
-      { id: "e3", minute: 64, type: "goal", team: "home", player: "H. Lozano", detail: "Tendangan Keras Kaki Kanan" },
-      { id: "e4", minute: 79, type: "red_card", team: "away", player: "T. Mokoena", detail: "Pelanggaran Keras Kedua" }
-    ]
-  },
-  {
-    id: "m2",
-    group: "Grup F",
-    homeTeam: "Korea Selatan",
-    homeFlag: "🇰🇷",
-    awayTeam: "Republik Ceko",
-    awayFlag: "🇨🇿",
-    homeScore: 2,
-    awayScore: 1,
-    status: "Selesai",
-    minute: 90,
-    isLive: false,
-    date: "12 Juni 2026",
-    time: "02:00 UTC",
-    stadium: "Centurylink Field",
-    city: "Seattle",
-    possession: [51, 49],
-    shots: [11, 10],
-    fouls: [12, 11],
-    yellowCards: [2, 1],
-    redCards: [0, 0],
-    events: [
-      { id: "e5", minute: 24, type: "goal", team: "home", player: "Son Heung-min", assistant: "Lee Kang-in" },
-      { id: "e6", minute: 58, type: "goal", team: "away", player: "P. Schick", assistant: "T. Souček" },
-      { id: "e7", minute: 75, type: "yellow_card", team: "home", player: "Kim Min-jae" },
-      { id: "e8", minute: 82, type: "goal", team: "home", player: "Hwang Hee-chan", detail: "Sundulan Maut" }
-    ]
-  },
-  {
-    id: "m3",
-    group: "Grup B",
-    homeTeam: "Kanada",
-    homeFlag: "🇨🇦",
-    awayTeam: "Swedia",
-    awayFlag: "🇸🇪",
-    homeScore: 1,
-    awayScore: 1,
-    status: "Selesai",
-    minute: 90,
-    isLive: false,
-    date: "12 Juni 2026",
-    time: "04:00 UTC",
-    stadium: "BMO Field",
-    city: "Toronto",
-    possession: [45, 55],
-    shots: [5, 8],
-    fouls: [8, 6],
-    yellowCards: [1, 1],
-    redCards: [0, 0],
-    events: [
-      { id: "e9", minute: 18, type: "goal", team: "away", player: "A. Isak", assistant: "D. Kulusevski" },
-      { id: "e10", minute: 31, type: "goal", team: "home", player: "J. David", detail: "Penalti Berkelas" }
-    ]
-  },
-  {
-    id: "m4",
-    group: "Grup L",
-    homeTeam: "Indonesia",
-    homeFlag: "🇮🇩",
-    awayTeam: "Belanda",
-    awayFlag: "🇳🇱",
-    homeScore: 2,
-    awayScore: 2,
-    status: "Selesai",
-    minute: 90,
-    isLive: false,
-    date: "12 Juni 2026",
-    time: "06:00 UTC",
-    stadium: "SoFi Stadium",
-    city: "Los Angeles",
-    possession: [48, 52],
-    shots: [8, 11],
-    fouls: [9, 8],
-    yellowCards: [1, 2],
-    redCards: [0, 0],
-    events: [
-      { id: "e11", minute: 14, type: "goal", team: "away", player: "C. Gakpo", assistant: "X. Simons" },
-      { id: "e12", minute: 28, type: "goal", team: "home", player: "Ragnar Oratmangoen", assistant: "Thom Haye" },
-      { id: "e13", minute: 48, type: "goal", team: "away", player: "Memphis Depay" },
-      { id: "e14", minute: 61, type: "goal", team: "home", player: "Rafael Struick", detail: "Sepakan Melengkung Tajam" }
-    ]
-  },
-  {
-    id: "m5",
-    group: "Grup C",
-    homeTeam: "Amerika Serikat",
-    homeFlag: "🇺🇸",
-    awayTeam: "Maroko",
-    awayFlag: "🇲🇦",
-    homeScore: 0,
-    awayScore: 0,
-    status: "Belum Mulai",
-    minute: 0,
-    isLive: false,
-    date: "13 Juni 2026",
-    time: "18:00 UTC",
-    stadium: "MetLife Stadium",
-    city: "East Rutherford",
-    events: []
-  },
-  {
-    id: "m6",
-    group: "Grup D",
-    homeTeam: "Jerman",
-    homeFlag: "🇩🇪",
-    awayTeam: "Argentina",
-    awayFlag: "🇦🇷",
-    homeScore: 0,
-    awayScore: 0,
-    status: "Belum Mulai",
-    minute: 0,
-    isLive: false,
-    date: "13 Juni 2026",
-    time: "21:00 UTC",
-    stadium: "Mercedes-Benz Stadium",
-    city: "Atlanta",
-    events: []
-  },
-  {
-    id: "m7",
-    group: "Grup G",
-    homeTeam: "Jepang",
-    homeFlag: "🇯🇵",
-    awayTeam: "Spanyol",
-    awayFlag: "🇪🇸",
-    homeScore: 0,
-    awayScore: 0,
-    status: "Belum Mulai",
-    minute: 0,
-    isLive: false,
-    date: "14 Juni 2026",
-    time: "15:00 UTC",
-    stadium: "Levi's Stadium",
-    city: "Santa Clara",
-    events: []
-  },
-  {
-    id: "m8",
-    group: "Grup H",
-    homeTeam: "Inggris",
-    homeFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿",
-    awayTeam: "Italia",
-    awayFlag: "🇮🇹",
-    homeScore: 0,
-    awayScore: 0,
-    status: "Belum Mulai",
-    minute: 0,
-    isLive: false,
-    date: "14 Juni 2026",
-    time: "20:00 UTC",
-    stadium: "Hard Rock Stadium",
-    city: "Miami",
-    events: []
-  }
-];
+let matches: Match[] = JSON.parse(JSON.stringify(JADWAL_MATCHES));
 
-// Group Standings initial mock based on previous and ongoing matches
-let groupStandings: Standing[] = [
-  {
-    groupName: "Grup A",
-    teams: [
-      { rank: 1, teamName: "Meksiko", flag: "🇲🇽", played: 1, won: 1, drawn: 0, lost: 0, gf: 2, ga: 0, gd: 2, pts: 3 },
-      { rank: 2, teamName: "Amerika Serikat", flag: "🇺🇸", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 },
-      { rank: 3, teamName: "Swis", flag: "🇨🇭", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 },
-      { rank: 4, teamName: "Afrika Selatan", flag: "🇿🇦", played: 1, won: 0, drawn: 0, lost: 1, gf: 0, ga: 2, gd: -2, pts: 0 }
-    ]
-  },
-  {
-    groupName: "Grup F",
-    teams: [
-      { rank: 1, teamName: "Korea Selatan", flag: "🇰🇷", played: 1, won: 1, drawn: 0, lost: 0, gf: 2, ga: 1, gd: 1, pts: 3 },
-      { rank: 2, teamName: "Prancis", flag: "🇫🇷", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 },
-      { rank: 3, teamName: "Uruguay", flag: "🇺🇾", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 },
-      { rank: 4, teamName: "Republik Ceko", flag: "🇨🇿", played: 1, won: 0, drawn: 0, lost: 1, gf: 1, ga: 2, gd: -1, pts: 0 }
-    ]
-  },
-  {
-    groupName: "Grup B",
-    teams: [
-      { rank: 1, teamName: "Kanada", flag: "🇨🇦", played: 1, won: 0, drawn: 1, lost: 0, gf: 1, ga: 1, gd: 0, pts: 1 },
-      { rank: 2, teamName: "Swedia", flag: "🇸🇪", played: 1, won: 0, drawn: 1, lost: 0, gf: 1, ga: 1, gd: 0, pts: 1 },
-      { rank: 3, teamName: "Ghana", flag: "🇬🇭", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 },
-      { rank: 4, teamName: "Kolombia", flag: "🇨 CO", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 }
-    ]
-  },
-  {
-    groupName: "Grup L",
-    teams: [
-      { rank: 1, teamName: "Indonesia", flag: "🇮🇩", played: 1, won: 0, drawn: 1, lost: 0, gf: 2, ga: 2, gd: 0, pts: 1 },
-      { rank: 2, teamName: "Belanda", flag: "🇳🇱", played: 1, won: 0, drawn: 1, lost: 0, gf: 2, ga: 2, gd: 0, pts: 1 },
-      { rank: 3, teamName: "Makedonia Utara", flag: "🇲🇰", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 },
-      { rank: 4, teamName: "Selandia Baru", flag: "🇳🇿", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0 }
-    ]
-  }
-];
+// Group Standings dynamically calculated from matches
+let groupStandings: Standing[] = calculateStandings(matches);
 
 // Names list to generate dynamic goal-scorers based on team
 const teamScorers: Record<string, string[]> = {
+  "Republik Korea": ["Hwang In-beom", "Son Heung-min", "Lee Kang-in", "Cho Gue-sung", "Hwang Hee-chan"],
   "Korea Selatan": ["Hwang In-beom", "Son Heung-min", "Lee Kang-in", "Cho Gue-sung", "Hwang Hee-chan"],
   "Republik Ceko": ["P. Schick", "T. Souček", "J. Kuchta", "A. Barák", "V. Coufal"],
   "Swedia": ["A. Isak", "V. Gyökeres", "D. Kulusevski", "E. Forsberg", "J. Larsson"],
@@ -412,7 +194,7 @@ setInterval(() => {
   });
 
   if (stateChanged) {
-    // Console log the tick occasionally
+    groupStandings = calculateStandings(matches);
   }
 }, 8000);
 
@@ -508,10 +290,14 @@ const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || process.env.VITE_APPS_SCR
 let lastSyncTime = 0;
 const SYNC_COOLDOWN = 45000; // 45 seconds cooldown between sync requests
 let isSyncing = false;
+let isFlashscoreDown = !APPS_SCRIPT_URL;
 
 // Sync live standings and results dynamically with deployed Google Apps Script (scraped from flashscore URL)
 async function syncDataWithAppsScript() {
-  if (!APPS_SCRIPT_URL) return;
+  if (!APPS_SCRIPT_URL) {
+    isFlashscoreDown = true;
+    return;
+  }
 
   const now = Date.now();
   if (isSyncing || (now - lastSyncTime < SYNC_COOLDOWN)) {
@@ -525,16 +311,27 @@ async function syncDataWithAppsScript() {
     console.log("[Apps Script Sync] Memulai sinkronisasi asinkron di latar belakang...");
 
     // Fetch scores and standings concurrently with an 8 second timeout to prevent timeouts
+    let fetchSuccess = true;
     const [responseScores, responseStandings] = await Promise.all([
-      fetch(`${APPS_SCRIPT_URL}?action=getScores`, { signal: AbortSignal.timeout(8000) }).catch(err => {
+      fetch(`${APPS_SCRIPT_URL}?action=getScores`, { signal: AbortSignal.timeout(8000) }).then(res => {
+        if (!res.ok) fetchSuccess = false;
+        return res;
+      }).catch(err => {
         console.log("[Apps Script Sync] Gagal mengontak GetScores (timeout atau kendala jaringan)");
+        fetchSuccess = false;
         return null;
       }),
-      fetch(`${APPS_SCRIPT_URL}?action=getStandings`, { signal: AbortSignal.timeout(8000) }).catch(err => {
+      fetch(`${APPS_SCRIPT_URL}?action=getStandings`, { signal: AbortSignal.timeout(8000) }).then(res => {
+        if (!res.ok) fetchSuccess = false;
+        return res;
+      }).catch(err => {
         console.log("[Apps Script Sync] Gagal mengontak GetStandings (timeout atau kendala jaringan)");
+        fetchSuccess = false;
         return null;
       })
     ]);
+
+    isFlashscoreDown = !fetchSuccess || !responseScores || !responseStandings;
 
     // 1. Process Scores response
     if (responseScores && responseScores.ok) {
@@ -602,6 +399,7 @@ async function syncDataWithAppsScript() {
     }
   } catch (err) {
     console.log("[Apps Script Sync] Catatan: Hubungan asinkronus ke Apps Script belum aktif.");
+    isFlashscoreDown = true;
   } finally {
     isSyncing = false;
   }
@@ -619,7 +417,8 @@ app.get("/api/matches", (req, res) => {
   
   res.json({
     matches,
-    serverTime: new Date().toISOString()
+    serverTime: new Date().toISOString(),
+    isFlashscoreDown
   });
 });
 
@@ -631,24 +430,23 @@ app.get("/api/standings", (req, res) => {
   });
 
   res.json({
-    standings: groupStandings
+    standings: groupStandings,
+    isFlashscoreDown
   });
 });
 
 // 3. User Trigger Match Simulation Refresh (Reset matches if they want)
 app.post("/api/matches/reset", (req, res) => {
   matches = matches.map(m => {
+    if (m.id === "m1") {
+      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore: 2, awayScore: 0 };
+    }
     if (m.id === "m2") {
-      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore: 2, awayScore: 1, events: m.events };
+      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore: 2, awayScore: 1 };
     }
-    if (m.id === "m3") {
-      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore:1, awayScore: 1, events: m.events };
-    }
-    if (m.id === "m4") {
-      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore: 2, awayScore: 2, events: m.events };
-    }
-    return m;
+    return { ...m, isLive: false, minute: 0, status: "Belum Mulai", homeScore: 0, awayScore: 0, events: [] };
   });
+  groupStandings = calculateStandings(matches);
   res.json({ message: "Simulasi Piala Dunia berhasil di-reset!", matches });
 });
 
@@ -686,7 +484,7 @@ function doGet(e) {
     if (action === "getScores") {
       result = fetchFlashscoreLiveMatches();
     } else if (action === "getGeminiAnalysis") {
-      var matchId = e.parameter.matchId || "m4";
+      var matchId = e.parameter.matchId || "m1";
       result = generateGeminiAnalysis(matchId);
     } else if (action === "getStandings") {
       result = getWorldCupStandings();
@@ -711,12 +509,11 @@ function getFlagForTeam(teamName) {
   var flags = {
     "Meksiko": "🇲🇽", "Afrika Selatan": "🇿🇦",
     "Korea Selatan": "🇰🇷", "Republik Ceko": "🇨🇿",
-    "Kanada": "🇨🇦", "Swedia": "🇸🇪",
-    "Indonesia": "🇮🇩", "Belanda": "🇳🇱",
-    "Amerika Serikat": "🇺🇸", "Maroko": "🇲🇦",
-    "Jerman": "🇩🇪", "Argentina": "🇦🇷",
-    "Jepang": "🇯🇵", "Spanyol": "🇪🇸",
-    "Inggris": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Italia": "🇮🇹"
+    "Kanada": "🇨🇦", "Bosnia & Herzegovina": "🇧🇦",
+    "Amerika Serikat": "🇺🇸", "Paraguay": "🇵🇾",
+    "Qatar": "🇶🇦", "Swis": "🇨🇭",
+    "Brazil": "🇧🇷", "Maroko": "🇲🇦",
+    "Haiti": "🇭🇹", "Skotlandia": "🏴󠁧󠁢󠁳󠁣󠁴󠁿"
   };
   return flags[teamName] || "🏳️";
 }
@@ -853,14 +650,13 @@ function fetchFlashscoreLiveMatches() {
   // 3. Perfect fallback (No live matches parsed, return default static values with no live ticks)
   if (matches.length === 0) {
     matches = [
-      { id: "m1", group: "Grup A", homeTeam: "Meksiko", homeFlag: "🇲🇽", awayTeam: "Afrika Selatan", awayFlag: "🇿🇦", homeScore: 2, awayScore: 0, status: "Selesai", date: "11 Juni 2026", time: "20:00 UTC", stadium: "Estadio Azteca" },
-      { id: "m2", group: "Grup F", homeTeam: "Korea Selatan", homeFlag: "🇰🇷", awayTeam: "Republik Ceko", awayFlag: "🇨🇿", homeScore: 2, awayScore: 1, status: "Selesai", date: "12 Juni 2026", time: "02:00 UTC", stadium: "Centurylink Field" },
-      { id: "m3", group: "Grup B", homeTeam: "Kanada", homeFlag: "🇨🇦", awayTeam: "Swedia", awayFlag: "🇸🇪", homeScore: 1, awayScore: 1, status: "Selesai", date: "12 Juni 2026", time: "04:00 UTC", stadium: "BMO Field" },
-      { id: "m4", group: "Grup L", homeTeam: "Indonesia", homeFlag: "🇮🇩", awayTeam: "Belanda", awayFlag: "🇳🇱", homeScore: 2, awayScore: 2, status: "Selesai", date: "12 Juni 2026", time: "06:00 UTC", stadium: "SoFi Stadium" },
-      { id: "m5", group: "Grup C", homeTeam: "Amerika Serikat", homeFlag: "🇺🇸", awayTeam: "Maroko", awayFlag: "🇲🇦", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "18:00 UTC", stadium: "MetLife Stadium" },
-      { id: "m6", group: "Grup D", homeTeam: "Jerman", homeFlag: "🇩🇪", awayTeam: "Argentina", awayFlag: "🇦🇷", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "21:00 UTC", stadium: "Mercedes-Benz Stadium" },
-      { id: "m7", group: "Grup G", homeTeam: "Jepang", homeFlag: "🇯🇵", awayTeam: "Spanyol", awayFlag: "🇪🇸", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "15:00 UTC", stadium: "Levi's Stadium" },
-      { id: "m8", group: "Grup H", homeTeam: "Inggris", homeFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", awayTeam: "Italia", awayFlag: "🇮🇹", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "20:00 UTC", stadium: "Hard Rock Stadium" }
+      { id: "m1", group: "Grup A", homeTeam: "Meksiko", homeFlag: "🇲🇽", awayTeam: "Afrika Selatan", awayFlag: "🇿🇦", homeScore: 2, awayScore: 0, status: "Selesai", date: "11 Juni 2026", time: "20:00", stadium: "Estadio Azteca", redCards: [1, 2] },
+      { id: "m2", group: "Grup A", homeTeam: "Korea Selatan", homeFlag: "🇰🇷", awayTeam: "Republik Ceko", awayFlag: "🇨🇿", homeScore: 2, awayScore: 1, status: "Selesai", date: "12 Juni 2026", time: "02:00", stadium: "Centurylink Field" },
+      { id: "m3", group: "Grup B", homeTeam: "Kanada", homeFlag: "🇨🇦", awayTeam: "Bosnia & Herzegovina", awayFlag: "🇧🇦", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "02:00", stadium: "BMO Field" },
+      { id: "m4", group: "Grup C", homeTeam: "Amerika Serikat", homeFlag: "🇺🇸", awayTeam: "Paraguay", awayFlag: "🇵🇾", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "08:00", stadium: "MetLife Stadium" },
+      { id: "m5", group: "Grup D", homeTeam: "Qatar", homeFlag: "🇶🇦", awayTeam: "Swis", awayFlag: "🇨🇭", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "02:00", stadium: "SoFi Stadium" },
+      { id: "m6", group: "Grup E", homeTeam: "Brazil", homeFlag: "🇧🇷", awayTeam: "Maroko", awayFlag: "🇲🇦", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "05:00", stadium: "Mercedes-Benz Stadium" },
+      { id: "m7", group: "Grup G", homeTeam: "Haiti", homeFlag: "🇭🇹", awayTeam: "Skotlandia", awayFlag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "08:00", stadium: "Hard Rock Stadium" }
     ];
   }
 
@@ -888,7 +684,7 @@ function generateGeminiAnalysis(matchId) {
   }
   
   if (!targetMatch) {
-    targetMatch = matches[3]; 
+    targetMatch = matches[0]; 
   }
 
   var prompt = "Kamu adalah komentator legendaris sepak bola piala dunia. Berikan analisis kilat yang emosional, seru, dan penuh jargon sepak bola dalam Bahasa Indonesia untuk pertandingan ini: " + 
@@ -935,7 +731,7 @@ function generateGeminiAnalysis(matchId) {
     return {
       matchId: matchId,
       status: "fallback",
-      commentary: "### DRAMA LUAR BIASA DI SOFI STADIUM!\\n\\nTembakan melengkung spektakuler dari penyerang sayap menghujam pojok kanan gawang, memaksa kiper lawan jatuh bangun tak berdaya! Taktik serangan balik cepat yang diracik pelatih terbukti mematikan, menyajikan duel penuh intensitas luhur khas Piala Dunia 2026. Pertandingan yang luar biasa menghibur penonton seantero jagat raya!",
+      commentary: "### DRAMA LUAR BIASA DI STADION MEMBARA!\\n\\nTembakan melengkung spektakuler dari penyerang sayap menghujam pojok kanan gawang, memaksa kiper lawan jatuh bangun tak berdaya! Taktik serangan balik cepat yang diracik pelatih terbukti mematikan, menyajikan duel penuh intensitas luhur khas Piala Dunia 2026. Pertandingan yang luar biasa menghibur penonton seantero jagat raya!",
       error: err.toString()
     };
   }
@@ -1025,17 +821,36 @@ function getWorldCupStandings() {
   }
 
   // Fallback / standard data yang realistis jika crawling gagal atau sedang diblokir Cloudflare
+  // Hitung klasemen dinamis secara otomatis dari daftar rujukan pertandingan diatas!
   if (standings.length === 0) {
-    standings = [
-      { team: "Meksiko", main: 1, poin: 3 },
-      { team: "Korea Selatan", main: 1, poin: 3 },
-      { team: "Indonesia", main: 1, poin: 1 },
-      { team: "Belanda", main: 1, poin: 1 },
-      { team: "Kanada", main: 1, poin: 1 },
-      { team: "Swedia", main: 1, poin: 1 },
-      { team: "Afrika Selatan", main: 1, poin: 0 },
-      { team: "Republik Ceko", main: 1, poin: 0 }
-    ];
+    var matchesData = fetchFlashscoreLiveMatches().matches;
+    var teamMap = {};
+    for (var i = 0; i < matchesData.length; i++) {
+      var m = matchesData[i];
+      if (!teamMap[m.homeTeam]) teamMap[m.homeTeam] = { team: m.homeTeam, main: 0, poin: 0 };
+      if (!teamMap[m.awayTeam]) teamMap[m.awayTeam] = { team: m.awayTeam, main: 0, poin: 0 };
+      
+      if (m.status === "Selesai" || m.status === "Live") {
+        teamMap[m.homeTeam].main += 1;
+        teamMap[m.awayTeam].main += 1;
+        if (m.homeScore > m.awayScore) {
+          teamMap[m.homeTeam].poin += 3;
+        } else if (m.homeScore < m.awayScore) {
+          teamMap[m.awayTeam].poin += 3;
+        } else {
+          teamMap[m.homeTeam].poin += 1;
+          teamMap[m.awayTeam].poin += 1;
+        }
+      }
+    }
+    for (var teamName in teamMap) {
+      if (teamName) {
+        standings.push(teamMap[teamName]);
+      }
+    }
+    standings.sort(function(a, b) {
+      return b.poin - a.poin;
+    });
   }
   return standings;
 }

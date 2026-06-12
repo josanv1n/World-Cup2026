@@ -11,6 +11,26 @@ interface MatchListProps {
   refreshSeconds: number;
 }
 
+const RedCardIcon = ({ count }: { count: number }) => {
+  if (count <= 0) return null;
+  if (count === 1) {
+    return (
+      <span 
+        className="w-2.5 h-3.5 bg-red-600 rounded-[2px] inline-block shadow-md border-r border-b border-red-700/80" 
+        title="1 Kartu Merah" 
+      />
+    );
+  }
+  return (
+    <span 
+      className="min-w-[14px] h-3.5 bg-red-600 rounded-[2px] inline-flex items-center justify-center px-0.5 shadow-sm text-white font-mono font-bold text-[10px] leading-none" 
+      title={`${count} Kartu Merah`}
+    >
+      {count}
+    </span>
+  );
+};
+
 export default function MatchList({ 
   matches, 
   selectedMatchId, 
@@ -242,6 +262,11 @@ export default function MatchList({
                         {match.group}
                       </span>
                       {getStatusBadge(match)}
+                      {match.date && (
+                        <span className="block mt-1 text-[9px] text-slate-400 font-semibold tracking-wide">
+                          {match.date}
+                        </span>
+                      )}
                     </div>
 
                     {/* Team Score Container */}
@@ -259,7 +284,7 @@ export default function MatchList({
                           </span>
                           {/* Red Card Marker if exists in events */}
                           {match.redCards && match.redCards[0] > 0 && (
-                            <span className="w-1.5 h-3 bg-red-600 rounded-sm inline-block shadow-md" title="Kartu Merah" />
+                            <RedCardIcon count={match.redCards[0]} />
                           )}
                         </div>
                         <span className={`text-base sm:text-xl font-mono font-black ${
@@ -283,7 +308,7 @@ export default function MatchList({
                             {match.awayTeam}
                           </span>
                           {match.redCards && match.redCards[1] > 0 && (
-                            <span className="w-1.5 h-3 bg-red-600 rounded-sm inline-block shadow-md" title="Kartu Merah" />
+                            <RedCardIcon count={match.redCards[1]} />
                           )}
                         </div>
                         <span className={`text-base sm:text-xl font-mono font-black ${
