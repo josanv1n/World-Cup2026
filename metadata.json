@@ -1,0 +1,6 @@
+{
+  "name": "FIFA World Cup 2026 Live Score Tracker",
+  "description": "Immersive, fully animated live score board, schedules, and standings app for the FIFA World Cup 2026, complete with a dynamic match engine and ready-to-use Google Apps Script integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
