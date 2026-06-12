@@ -18,6 +18,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'gas'>('scores');
   const [refreshSeconds, setRefreshSeconds] = useState(8);
   const [apiError, setApiError] = useState(false);
+  const [showApiWarning, setShowApiWarning] = useState(true);
 
   // Fetch match results and standings on startup
   const fetchAllData = async () => {
@@ -433,9 +434,21 @@ export default function App() {
         {/* MAIN TAB SWITCH VIEWPORT AREA */}
         <div className="w-full relative min-h-[420px]">
           
-          {apiError && (
-            <div className="bg-red-950/20 border border-red-900/40 p-4 rounded-xl text-xs text-red-400 flex items-center gap-2 mb-4 select-none">
-              <span>⚠️ Terjadi masalah konektivitas server. Skor berjalan lokal pada simulator cadangan piala dunia.</span>
+          {apiError && showApiWarning && (
+            <div className="bg-red-950/40 border border-red-500/30 p-4 rounded-xl text-xs text-red-300 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 mb-4 select-none relative overflow-hidden">
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-red-500" />
+              <span className="flex items-start md:items-center gap-2 pl-2">
+                <span className="text-sm shrink-0">⚠️</span>
+                <span>
+                  <strong>Konektivitas Server Latar Belakang Nonaktif (Normal di Vercel):</strong> Aplikasi dialihkan dengan aman ke <strong>Simulator Ticker Lokal</strong>. Skor langsung, statistik pertandingan, dan kejadian drama gol tetap berjalan dinamis di browser Anda secara independen!
+                </span>
+              </span>
+              <button 
+                onClick={() => setShowApiWarning(false)} 
+                className="text-red-400 hover:text-white bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded transition-all font-bold text-[10px] shrink-0 self-end md:self-auto uppercase tracking-wider"
+              >
+                Sembunyikan
+              </button>
             </div>
           )}
 
