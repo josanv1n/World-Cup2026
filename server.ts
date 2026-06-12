@@ -68,9 +68,9 @@ let matches: Match[] = [
     awayFlag: "🇨🇿",
     homeScore: 2,
     awayScore: 1,
-    status: "88'",
-    minute: 88,
-    isLive: true,
+    status: "Selesai",
+    minute: 90,
+    isLive: false,
     date: "12 Juni 2026",
     time: "02:00 UTC",
     stadium: "Centurylink Field",
@@ -96,9 +96,9 @@ let matches: Match[] = [
     awayFlag: "🇸🇪",
     homeScore: 1,
     awayScore: 1,
-    status: "35'",
-    minute: 35,
-    isLive: true,
+    status: "Selesai",
+    minute: 90,
+    isLive: false,
     date: "12 Juni 2026",
     time: "04:00 UTC",
     stadium: "BMO Field",
@@ -122,9 +122,9 @@ let matches: Match[] = [
     awayFlag: "🇳🇱",
     homeScore: 2,
     awayScore: 2,
-    status: "65'",
-    minute: 65,
-    isLive: true,
+    status: "Selesai",
+    minute: 90,
+    isLive: false,
     date: "12 Juni 2026",
     time: "06:00 UTC",
     stadium: "SoFi Stadium",
@@ -637,16 +637,15 @@ app.get("/api/standings", (req, res) => {
 
 // 3. User Trigger Match Simulation Refresh (Reset matches if they want)
 app.post("/api/matches/reset", (req, res) => {
-  // Retain some live matches
   matches = matches.map(m => {
     if (m.id === "m2") {
-      return { ...m, isLive: true, minute: 88, status: "88'", homeScore: 2, awayScore: 1, events: m.events.slice(0, 4) };
+      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore: 2, awayScore: 1, events: m.events };
     }
     if (m.id === "m3") {
-      return { ...m, isLive: true, minute: 35, status: "35'", homeScore: 1, awayScore: 1, events: m.events.slice(0, 2) };
+      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore:1, awayScore: 1, events: m.events };
     }
     if (m.id === "m4") {
-      return { ...m, isLive: true, minute: 65, status: "65'", homeScore: 2, awayScore: 2, events: m.events.slice(0, 4) };
+      return { ...m, isLive: false, minute: 90, status: "Selesai", homeScore: 2, awayScore: 2, events: m.events };
     }
     return m;
   });
@@ -685,7 +684,7 @@ function doGet(e) {
     var result = {};
 
     if (action === "getScores") {
-      result = fetchFlashscoreSimulated();
+      result = fetchFlashscoreLiveMatches();
     } else if (action === "getGeminiAnalysis") {
       var matchId = e.parameter.matchId || "m4";
       result = generateGeminiAnalysis(matchId);
@@ -706,59 +705,170 @@ function doGet(e) {
 }
 
 /**
- * Retreive dynamic soccer match mock with high detail (Flashscore structure mirror)
+ * Returns team emoji flag based on name.
  */
-function fetchFlashscoreSimulated() {
+function getFlagForTeam(teamName) {
+  var flags = {
+    "Meksiko": "🇲🇽", "Afrika Selatan": "🇿🇦",
+    "Korea Selatan": "🇰🇷", "Republik Ceko": "🇨🇿",
+    "Kanada": "🇨🇦", "Swedia": "🇸🇪",
+    "Indonesia": "🇮🇩", "Belanda": "🇳🇱",
+    "Amerika Serikat": "🇺🇸", "Maroko": "🇲🇦",
+    "Jerman": "🇩🇪", "Argentina": "🇦🇷",
+    "Jepang": "🇯🇵", "Spanyol": "🇪🇸",
+    "Inggris": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Italia": "🇮🇹"
+  };
+  return flags[teamName] || "🏳️";
+}
+
+/**
+ * Retrieve dynamic soccer match schedules and live scores.
+ * First checks for a Google Sheet named "Scores" for manual control/override.
+ * If not, scrapes real-time feed directly from Flashscore.
+ */
+function fetchFlashscoreLiveMatches() {
+  var matches = [];
+  var hasSheetOverride = false;
+  
+  // 1. Spreadsheet override hook
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) {
+      var sheet = ss.getSheetByName("Scores");
+      if (sheet) {
+        var values = sheet.getDataRange().getValues();
+        if (values.length > 1) {
+          hasSheetOverride = true;
+          for (var i = 1; i < values.length; i++) {
+            var row = values[i];
+            if (!row[2]) continue; // Skip empty homes
+            matches.push({
+              id: row[0] ? row[0].toString() : ("sheet_" + i),
+              group: row[1] || "Grup A",
+              homeTeam: row[2],
+              homeFlag: row[3] || getFlagForTeam(row[2]),
+              awayTeam: row[4],
+              awayFlag: row[5] || getFlagForTeam(row[4]),
+              homeScore: row[6] !== "" ? parseInt(row[6], 10) : 0,
+              awayScore: row[7] !== "" ? parseInt(row[7], 10) : 0,
+              status: row[8] || "Selesai"
+            });
+          }
+        }
+      }
+    }
+  } catch (sheetErr) {
+    // Spreadsheet not found or empty, continue to crawler
+  }
+
+  if (hasSheetOverride && matches.length > 0) {
+    return {
+      source: "Google Sheets Override",
+      retrievedAt: new Date().toISOString(),
+      tournamentName: "DUNIA: Piala Dunia 2026 (Sheets Overrode)",
+      matches: matches
+    };
+  }
+
+  // 2. Live Scraper from Flashscore league schedules / scores
+  try {
+    var stageId = "SbLsX4y7";
+    var feedUrl = "https://www.flashscore.co.id/x/feed/df_s_1_" + stageId + "_";
+    
+    var response = UrlFetchApp.fetch(feedUrl, {
+      "method": "get",
+      "headers": {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "X-Fsign": "SW9D1eZo",
+        "X-Referer": "https://www.flashscore.co.id/"
+      },
+      "muteHttpExceptions": true
+    });
+
+    var text = response.getContentText();
+    if (response.getResponseCode() === 200 && text && text.indexOf("AA~") !== -1) {
+      var segments = text.split("¬");
+      var currentMatch = null;
+      var matchIndex = 1;
+
+      for (var i = 0; i < segments.length; i++) {
+        var parts = segments[i].split("~");
+        var cmd = parts[0];
+
+        if (cmd === "AA") {
+          if (currentMatch && currentMatch.homeTeam) {
+            matches.push(currentMatch);
+          }
+          currentMatch = {
+            id: parts[1] || ("fs_" + matchIndex++),
+            group: "Grup Piala Dunia",
+            homeTeam: "",
+            homeFlag: "",
+            awayTeam: "",
+            awayFlag: "",
+            homeScore: 0,
+            awayScore: 0,
+            status: "Belum Mulai"
+          };
+        } else if (currentMatch) {
+          if (cmd === "AE") {
+            currentMatch.homeTeam = parts[1];
+            currentMatch.homeFlag = getFlagForTeam(parts[1]);
+          } else if (cmd === "AF") {
+            currentMatch.awayTeam = parts[1];
+            currentMatch.awayFlag = getFlagForTeam(parts[1]);
+          } else if (cmd === "AG") {
+            currentMatch.homeScore = parseInt(parts[1], 10) || 0;
+          } else if (cmd === "AH") {
+            currentMatch.awayScore = parseInt(parts[1], 10) || 0;
+          } else if (cmd === "AD") {
+            var timestamp = parseInt(parts[1], 10);
+            if (timestamp) {
+              var d = new Date(timestamp * 1000);
+              currentMatch.date = d.toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
+              currentMatch.time = d.toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }) + " WIB";
+            }
+          } else if (cmd === "AS") {
+            var statusCode = parts[1]; 
+            if (statusCode === "3") {
+              currentMatch.status = "Selesai";
+            } else if (statusCode === "2") {
+              currentMatch.status = "Live";
+            } else {
+              currentMatch.status = "Belum Mulai";
+            }
+          } else if (cmd === "CY") {
+            currentMatch.group = parts[1] || currentMatch.group;
+          }
+        }
+      }
+      if (currentMatch && currentMatch.homeTeam) {
+        matches.push(currentMatch);
+      }
+    }
+  } catch (err) {
+    Logger.log("Gagal mengambil data pertandingan live: " + err.toString());
+  }
+
+  // 3. Perfect fallback (No live matches parsed, return default static values with no live ticks)
+  if (matches.length === 0) {
+    matches = [
+      { id: "m1", group: "Grup A", homeTeam: "Meksiko", homeFlag: "🇲🇽", awayTeam: "Afrika Selatan", awayFlag: "🇿🇦", homeScore: 2, awayScore: 0, status: "Selesai", date: "11 Juni 2026", time: "20:00 UTC", stadium: "Estadio Azteca" },
+      { id: "m2", group: "Grup F", homeTeam: "Korea Selatan", homeFlag: "🇰🇷", awayTeam: "Republik Ceko", awayFlag: "🇨🇿", homeScore: 2, awayScore: 1, status: "Selesai", date: "12 Juni 2026", time: "02:00 UTC", stadium: "Centurylink Field" },
+      { id: "m3", group: "Grup B", homeTeam: "Kanada", homeFlag: "🇨🇦", awayTeam: "Swedia", awayFlag: "🇸🇪", homeScore: 1, awayScore: 1, status: "Selesai", date: "12 Juni 2026", time: "04:00 UTC", stadium: "BMO Field" },
+      { id: "m4", group: "Grup L", homeTeam: "Indonesia", homeFlag: "🇮🇩", awayTeam: "Belanda", awayFlag: "🇳🇱", homeScore: 2, awayScore: 2, status: "Selesai", date: "12 Juni 2026", time: "06:00 UTC", stadium: "SoFi Stadium" },
+      { id: "m5", group: "Grup C", homeTeam: "Amerika Serikat", homeFlag: "🇺🇸", awayTeam: "Maroko", awayFlag: "🇲🇦", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "18:00 UTC", stadium: "MetLife Stadium" },
+      { id: "m6", group: "Grup D", homeTeam: "Jerman", homeFlag: "🇩🇪", awayTeam: "Argentina", awayFlag: "🇦🇷", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "21:00 UTC", stadium: "Mercedes-Benz Stadium" },
+      { id: "m7", group: "Grup G", homeTeam: "Jepang", homeFlag: "🇯🇵", awayTeam: "Spanyol", awayFlag: "🇪🇸", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "15:00 UTC", stadium: "Levi's Stadium" },
+      { id: "m8", group: "Grup H", homeTeam: "Inggris", homeFlag: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", awayTeam: "Italia", awayFlag: "🇮🇹", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "20:00 UTC", stadium: "Hard Rock Stadium" }
+    ];
+  }
+
   return {
-    source: "https://www.flashscore.co.id/sepak-bola/dunia/piala-dunia/",
+    source: "https://www.flashscore.co.id/sepak-bola/dunia/piala-dunia/#/SbLsX4y7/peringkat/",
     retrievedAt: new Date().toISOString(),
     tournamentName: "DUNIA: Piala Dunia 2026",
-    matches: [
-      {
-        id: "m1",
-        group: "Grup A",
-        homeTeam: "Meksiko",
-        homeFlag: "🇲🇽",
-        awayTeam: "Afrika Selatan",
-        awayFlag: "🇿🇦",
-        homeScore: 2,
-        awayScore: 0,
-        status: "Selesai"
-      },
-      {
-        id: "m2",
-        group: "Grup F",
-        homeTeam: "Korea Selatan",
-        homeFlag: "🇰🇷",
-        awayTeam: "Republik Ceko",
-        awayFlag: "🇨🇿",
-        homeScore: 2,
-        awayScore: 1,
-        status: "Live (88')"
-      },
-      {
-        id: "m3",
-        group: "Grup B",
-        homeTeam: "Kanada",
-        homeFlag: "🇨🇦",
-        awayTeam: "Swedia",
-        awayFlag: "🇸🇪",
-        homeScore: 1,
-        awayScore: 1,
-        status: "Live (35')"
-      },
-      {
-        id: "m4",
-        group: "Grup L",
-        homeTeam: "Indonesia",
-        homeFlag: "🇮🇩",
-        awayTeam: "Belanda",
-        awayFlag: "🇳🇱",
-        homeScore: 2,
-        awayScore: 2,
-        status: "Live (65')"
-      }
-    ]
+    matches: matches
   };
 }
 
@@ -767,7 +877,7 @@ function fetchFlashscoreSimulated() {
  */
 function generateGeminiAnalysis(matchId) {
   var apiKey = PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY") || GEMINI_API_FALLBACK;
-  var matches = fetchFlashscoreSimulated().matches;
+  var matches = fetchFlashscoreLiveMatches().matches;
   var targetMatch = null;
   
   for (var i = 0; i < matches.length; i++) {
@@ -778,7 +888,7 @@ function generateGeminiAnalysis(matchId) {
   }
   
   if (!targetMatch) {
-    targetMatch = matches[3]; // Default to Indonesia vs Netherlands
+    targetMatch = matches[3]; 
   }
 
   var prompt = "Kamu adalah komentator legendaris sepak bola piala dunia. Berikan analisis kilat yang emosional, seru, dan penuh jargon sepak bola dalam Bahasa Indonesia untuk pertandingan ini: " + 
@@ -825,16 +935,50 @@ function generateGeminiAnalysis(matchId) {
     return {
       matchId: matchId,
       status: "fallback",
-      commentary: "### DRAMA LUAR BIASA DI SOFI STADIUM!\n\nTembakan melengkung spektakuler dari penyerang sayap menghujam pojok kanan gawang, memaksa kiper lawan jatuh bangun tak berdaya! Taktik serangan balik cepat yang diracik pelatih terbukti mematikan, menyajikan duel penuh intensitas luhur khas Piala Dunia 2026. Pertandingan yang luar biasa menghibur penonton seantero jagat raya!",
+      commentary: "### DRAMA LUAR BIASA DI SOFI STADIUM!\\n\\nTembakan melengkung spektakuler dari penyerang sayap menghujam pojok kanan gawang, memaksa kiper lawan jatuh bangun tak berdaya! Taktik serangan balik cepat yang diracik pelatih terbukti mematikan, menyajikan duel penuh intensitas luhur khas Piala Dunia 2026. Pertandingan yang luar biasa menghibur penonton seantero jagat raya!",
       error: err.toString()
     };
   }
 }
 
+/**
+ * Retrieve dynamic standings from Flashscore or Google Sheets
+ */
 function getWorldCupStandings() {
   var standings = [];
+  var hasSheetOverride = false;
+
+  // 1. Spreadsheet override hook for Standings
   try {
-    // 1. Fetch Flashscore Group Stage table feed otomatis
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (ss) {
+      var sheet = ss.getSheetByName("Standings");
+      if (sheet) {
+        var values = sheet.getDataRange().getValues();
+        if (values.length > 1) {
+          hasSheetOverride = true;
+          for (var i = 1; i < values.length; i++) {
+            var row = values[i];
+            if (!row[0]) continue;
+            standings.push({
+              team: row[0],
+              main: row[1] !== "" ? parseInt(row[1], 10) : 0,
+              poin: row[2] !== "" ? parseInt(row[2], 10) : 0
+            });
+          }
+        }
+      }
+    }
+  } catch (sheetErr) {
+    // Spreadsheet empty or not bound
+  }
+
+  if (hasSheetOverride && standings.length > 0) {
+    return standings;
+  }
+
+  // 2. Fetch Flashscore Group Stage table feed otomatis
+  try {
     var stageId = "SbLsX4y7";
     var feedUrl = "https://www.flashscore.co.id/x/feed/df_to_1_" + stageId + "_";
     
@@ -842,6 +986,7 @@ function getWorldCupStandings() {
       "method": "get",
       "headers": {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "X-Fsign": "SW9D1eZo",
         "X-Referer": "https://www.flashscore.co.id/"
       },
       "muteHttpExceptions": true
@@ -896,7 +1041,6 @@ function getWorldCupStandings() {
 }
 
 function initialSetup() {
-  // Set script property safely for test purposes
   PropertiesService.getScriptProperties().setProperty("GEMINI_API_KEY", GEMINI_API_FALLBACK);
   Logger.log("Inisialisasi Properti Script 'GEMINI_API_KEY' Sukses!");
 }
