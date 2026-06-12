@@ -505,81 +505,105 @@ function finalizeStandings(homeTeam: string, awayTeam: string, homeScore: number
 
 const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || process.env.VITE_APPS_SCRIPT_URL || "";
 
+let lastSyncTime = 0;
+const SYNC_COOLDOWN = 45000; // 45 seconds cooldown between sync requests
+let isSyncing = false;
+
 // Sync live standings and results dynamically with deployed Google Apps Script (scraped from flashscore URL)
 async function syncDataWithAppsScript() {
   if (!APPS_SCRIPT_URL) return;
+
+  const now = Date.now();
+  if (isSyncing || (now - lastSyncTime < SYNC_COOLDOWN)) {
+    return; // Skip if currently syncing, or called within the cooldown window
+  }
+
+  isSyncing = true;
+  lastSyncTime = now;
+
   try {
-    // 1. Sync Matches (Get Scores Action)
-    const responseScores = await fetch(`${APPS_SCRIPT_URL}?action=getScores`);
-    if (responseScores.ok) {
+    console.log("[Apps Script Sync] Memulai sinkronisasi asinkron di latar belakang...");
+
+    // Fetch scores and standings concurrently with an 8 second timeout to prevent timeouts
+    const [responseScores, responseStandings] = await Promise.all([
+      fetch(`${APPS_SCRIPT_URL}?action=getScores`, { signal: AbortSignal.timeout(8000) }).catch(err => {
+        console.log("[Apps Script Sync] Gagal mengontak GetScores (timeout atau kendala jaringan)");
+        return null;
+      }),
+      fetch(`${APPS_SCRIPT_URL}?action=getStandings`, { signal: AbortSignal.timeout(8000) }).catch(err => {
+        console.log("[Apps Script Sync] Gagal mengontak GetStandings (timeout atau kendala jaringan)");
+        return null;
+      })
+    ]);
+
+    // 1. Process Scores response
+    if (responseScores && responseScores.ok) {
       const text = await responseScores.text();
       
       // Jika response mengandung HTML (misalnya halaman login akun Google / izin akses ditolak)
-      if (text.trim().startsWith("<") || text.includes("<html") || text.includes("<!DOCTYPE")) {
-        console.log("[Apps Script Sync] Catatan: Web App mengembalikan format HTML. Sinkronisasi otomatis ditangguhkan.");
-        return;
-      }
-
-      try {
-        const data = JSON.parse(text);
-        if (data && Array.isArray(data.matches)) {
-          console.log(`[Apps Script Sync] Sukses mensinkronkan ${data.matches.length} laga.`);
-          data.matches.forEach((liveMatch: any) => {
-            const matchObj = matches.find(m => m.id === liveMatch.id || m.homeTeam === liveMatch.homeTeam);
-            if (matchObj) {
-              matchObj.homeScore = liveMatch.homeScore !== undefined ? liveMatch.homeScore : matchObj.homeScore;
-              matchObj.awayScore = liveMatch.awayScore !== undefined ? liveMatch.awayScore : matchObj.awayScore;
-              matchObj.status = liveMatch.status || matchObj.status;
-              if (liveMatch.status === "Selesai") {
-                matchObj.isLive = false;
-              } else if (liveMatch.status && (liveMatch.status.includes("Live") || liveMatch.status.includes("'"))) {
-                matchObj.isLive = true;
+      if (!text.trim().startsWith("<") && !text.includes("<html") && !text.includes("<!DOCTYPE")) {
+        try {
+          const data = JSON.parse(text);
+          if (data && Array.isArray(data.matches)) {
+            console.log(`[Apps Script Sync] Sukses mencocokkan ${data.matches.length} skor dari Google Sheet.`);
+            data.matches.forEach((liveMatch: any) => {
+              const matchObj = matches.find(m => m.id === liveMatch.id || m.homeTeam === liveMatch.homeTeam);
+              if (matchObj) {
+                matchObj.homeScore = liveMatch.homeScore !== undefined ? liveMatch.homeScore : matchObj.homeScore;
+                matchObj.awayScore = liveMatch.awayScore !== undefined ? liveMatch.awayScore : matchObj.awayScore;
+                matchObj.status = liveMatch.status || matchObj.status;
+                if (liveMatch.status === "Selesai") {
+                  matchObj.isLive = false;
+                } else if (liveMatch.status && (liveMatch.status.includes("Live") || liveMatch.status.includes("'"))) {
+                  matchObj.isLive = true;
+                }
               }
-            }
-          });
+            });
+          }
+        } catch (parseErr) {
+          console.log("[Apps Script Sync] Catatan: Data laga tidak dalam format JSON yang valid.");
         }
-      } catch (parseErr) {
-        console.log("[Apps Script Sync] Catatan: Data laga tidak dalam format JSON yang valid.");
+      } else {
+        console.log("[Apps Script Sync] Catatan: Web App mengembalikan format HTML. Sinkronisasi otomatis ditangguhkan.");
       }
     }
 
-    // 2. Sync Standings (Get Standings Action)
-    const responseStandings = await fetch(`${APPS_SCRIPT_URL}?action=getStandings`);
-    if (responseStandings.ok) {
+    // 2. Process Standings response
+    if (responseStandings && responseStandings.ok) {
       const text = await responseStandings.text();
       
-      // Jika response mengandung HTML
-      if (text.trim().startsWith("<") || text.includes("<html") || text.includes("<!DOCTYPE")) {
-        return;
-      }
-
-      try {
-        const liveStandings = JSON.parse(text);
-        if (Array.isArray(liveStandings) && liveStandings.length > 0) {
-          console.log("[Apps Script Sync] Sinkronisasi klasemen klub selesai.");
-          groupStandings = groupStandings.map(group => {
-            const updatedTeams = group.teams.map(team => {
-              const liveTeam = liveStandings.find((t: any) => t.team === team.teamName || t.teamName === team.teamName);
-              if (liveTeam) {
-                return {
-                  ...team,
-                  played: liveTeam.main !== undefined ? liveTeam.main : team.played,
-                  pts: liveTeam.poin !== undefined ? liveTeam.poin : team.pts
-                };
-              }
-              return team;
+      // Jika response tidak mengandung HTML
+      if (!text.trim().startsWith("<") && !text.includes("<html") && !text.includes("<!DOCTYPE")) {
+        try {
+          const liveStandings = JSON.parse(text);
+          if (Array.isArray(liveStandings) && liveStandings.length > 0) {
+            console.log("[Apps Script Sync] Sinkronisasi klasemen klub selesai.");
+            groupStandings = groupStandings.map(group => {
+              const updatedTeams = group.teams.map(team => {
+                const liveTeam = liveStandings.find((t: any) => t.team === team.teamName || t.teamName === team.teamName);
+                if (liveTeam) {
+                  return {
+                    ...team,
+                    played: liveTeam.main !== undefined ? liveTeam.main : team.played,
+                    pts: liveTeam.poin !== undefined ? liveTeam.poin : team.pts
+                  };
+                }
+                return team;
+              });
+              const sortedTeams = [...updatedTeams].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+              const rankedTeams = sortedTeams.map((t, idx) => ({ ...t, rank: idx + 1 }));
+              return { ...group, teams: rankedTeams };
             });
-            const sortedTeams = [...updatedTeams].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
-            const rankedTeams = sortedTeams.map((t, idx) => ({ ...t, rank: idx + 1 }));
-            return { ...group, teams: rankedTeams };
-          });
+          }
+        } catch (parseErr) {
+          console.log("[Apps Script Sync] Catatan: Klasemen pasif.");
         }
-      } catch (parseErr) {
-        console.log("[Apps Script Sync] Catatan: Klasemen pasif.");
       }
     }
   } catch (err) {
     console.log("[Apps Script Sync] Catatan: Hubungan asinkronus ke Apps Script belum aktif.");
+  } finally {
+    isSyncing = false;
   }
 }
 
@@ -587,9 +611,12 @@ async function syncDataWithAppsScript() {
 // --- REST API ENDPOINTS ---
 
 // 1. Get matches
-app.get("/api/matches", async (req, res) => {
-  // Sync before responder if apps script is active
-  await syncDataWithAppsScript();
+app.get("/api/matches", (req, res) => {
+  // Fire and forget the background Apps Script synchronization
+  syncDataWithAppsScript().catch(err => {
+    console.log("[Apps Script Sync] Gagal menjalankan sinkronisasi latar belakang:", err);
+  });
+  
   res.json({
     matches,
     serverTime: new Date().toISOString()
@@ -597,9 +624,12 @@ app.get("/api/matches", async (req, res) => {
 });
 
 // 2. Get standings
-app.get("/api/standings", async (req, res) => {
-  // Sync before responder if apps script is active
-  await syncDataWithAppsScript();
+app.get("/api/standings", (req, res) => {
+  // Fire and forget the background Apps Script synchronization
+  syncDataWithAppsScript().catch(err => {
+    console.log("[Apps Script Sync] Gagal menjalankan sinkronisasi latar belakang:", err);
+  });
+
   res.json({
     standings: groupStandings
   });

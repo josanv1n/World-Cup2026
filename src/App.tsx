@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Match, Standing } from './types';
+import { initialMatches, initialStandings, teamScorersFallback } from './mockData';
 import YoutubeEmbed from './components/YoutubeEmbed';
 import MatchList from './components/MatchList';
 import MatchDetail from './components/MatchDetail';
@@ -11,8 +12,8 @@ import InteractiveBall from './components/InteractiveBall';
 import { Trophy, Compass, Star, FileCode, MessageSquareCode, CalendarDays, RefreshCw, Sparkles, Tv, HelpCircle, Heart } from 'lucide-react';
 
 export default function App() {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [standings, setStandings] = useState<Standing[]>([]);
+  const [matches, setMatches] = useState<Match[]>(initialMatches);
+  const [standings, setStandings] = useState<Standing[]>(initialStandings);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>("m4"); // Indonesia vs Belanda by default!
   const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'gas'>('scores');
   const [refreshSeconds, setRefreshSeconds] = useState(8);
@@ -24,17 +25,202 @@ export default function App() {
       const matchRes = await fetch("/api/matches");
       if (!matchRes.ok) throw new Error();
       const matchData = await matchRes.json();
-      setMatches(matchData.matches || []);
+      if (matchData.matches && matchData.matches.length > 0) {
+        setMatches(matchData.matches);
+      }
 
       const standRes = await fetch("/api/standings");
       if (!standRes.ok) throw new Error();
       const standData = await standRes.json();
-      setStandings(standData.standings || []);
+      if (standData.standings && standData.standings.length > 0) {
+        setStandings(standData.standings);
+      }
 
       setApiError(false);
     } catch {
       setApiError(true);
     }
+  };
+
+  // Helper to update standings live in local simulation
+  const updateStandingsLocalLive = (homeTeam: string, awayTeam: string, homeGDelta: number, awayGDelta: number) => {
+    setStandings(prev => prev.map(group => {
+      const hasTeam = group.teams.some(t => t.teamName === homeTeam || t.teamName === awayTeam);
+      if (!hasTeam) return group;
+
+      const teamsUpdated = group.teams.map(team => {
+        if (team.teamName === homeTeam) {
+          return {
+            ...team,
+            gf: team.gf + homeGDelta,
+            ga: team.ga + awayGDelta,
+            gd: (team.gf + homeGDelta) - (team.ga + awayGDelta)
+          };
+        }
+        if (team.teamName === awayTeam) {
+          return {
+            ...team,
+            gf: team.gf + awayGDelta,
+            ga: team.ga + homeGDelta,
+            gd: (team.gf + awayGDelta) - (team.ga + homeGDelta)
+          };
+        }
+        return team;
+      });
+
+      teamsUpdated.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+      return { ...group, teams: teamsUpdated.map((t, idx) => ({ ...t, rank: idx + 1 })) };
+    }));
+  };
+
+  // Helper to finalize standings points in local simulation
+  const finalizeStandingsLocal = (homeTeam: string, awayTeam: string, homeScore: number, awayScore: number) => {
+    setStandings(prev => prev.map(group => {
+      const hasTeam = group.teams.some(t => t.teamName === homeTeam || t.teamName === awayTeam);
+      if (!hasTeam) return group;
+
+      const teamsUpdated = group.teams.map(team => {
+        if (team.teamName === homeTeam) {
+          const isWin = homeScore > awayScore;
+          const isDraw = homeScore === awayScore;
+          return {
+            ...team,
+            played: team.played + 1,
+            won: team.won + (isWin ? 1 : 0),
+            drawn: team.drawn + (isDraw ? 1 : 0),
+            lost: team.lost + (!isWin && !isDraw ? 1 : 0),
+            pts: team.pts + (isWin ? 3 : isDraw ? 1 : 0)
+          };
+        }
+        if (team.teamName === awayTeam) {
+          const isWin = awayScore > homeScore;
+          const isDraw = homeScore === awayScore;
+          return {
+            ...team,
+            played: team.played + 1,
+            won: team.won + (isWin ? 1 : 0),
+            drawn: team.drawn + (isDraw ? 1 : 0),
+            lost: team.lost + (!isWin && !isDraw ? 1 : 0),
+            pts: team.pts + (isWin ? 3 : isDraw ? 1 : 0)
+          };
+        }
+        return team;
+      });
+
+      teamsUpdated.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+      return { ...group, teams: teamsUpdated.map((t, idx) => ({ ...t, rank: idx + 1 })) };
+    }));
+  };
+
+  // Run a local simulation tick when server is disconnected/unreachable
+  const simulateLocalMatchesTick = () => {
+    setMatches(prevMatches => {
+      let stateChanged = false;
+      const nextMatches = prevMatches.map(match => {
+        if (!match.isLive) return match;
+        stateChanged = true;
+        const nextMin = match.minute + 1;
+        let nextStatus = `${nextMin}'`;
+        let nextHomeScore = match.homeScore;
+        let nextAwayScore = match.awayScore;
+        const nextEvents = [...match.events];
+
+        // Stats simulation
+        const randStats = Math.sin(nextMin);
+        const homePoss = Math.floor(50 + (randStats * 10));
+        const nextPossession: [number, number] = [homePoss, 100 - homePoss];
+        const nextShots: [number, number] = [
+          (match.shots?.[0] || 0) + (Math.random() > 0.82 ? 1 : 0),
+          (match.shots?.[1] || 0) + (Math.random() > 0.82 ? 1 : 0)
+        ];
+        const nextFouls: [number, number] = [
+          (match.fouls?.[0] || 0) + (Math.random() > 0.90 ? 1 : 0),
+          (match.fouls?.[1] || 0) + (Math.random() > 0.90 ? 1 : 0)
+        ];
+        const nextYCard = [...(match.yellowCards || [0, 0])] as [number, number];
+        const nextRCard = [...(match.redCards || [0, 0])] as [number, number];
+
+        // Goal scoring algorithm (~4% chance per tick)
+        const rollScore = Math.random();
+        if (rollScore < 0.02) {
+          // Home Goal
+          nextHomeScore += 1;
+          const pool = teamScorersFallback[match.homeTeam] || ["Pemain Bintang"];
+          const scorerName = pool[Math.floor(Math.random() * pool.length)];
+          nextEvents.push({
+            id: `le_${match.id}_${nextMin}_h`,
+            minute: nextMin,
+            type: "goal",
+            team: "home",
+            player: scorerName,
+            detail: "Sepakan Keras"
+          });
+          updateStandingsLocalLive(match.homeTeam, match.awayTeam, 1, 0);
+        } else if (rollScore < 0.04) {
+          // Away Goal
+          nextAwayScore += 1;
+          const pool = teamScorersFallback[match.awayTeam] || ["Pemain Bintang"];
+          const scorerName = pool[Math.floor(Math.random() * pool.length)];
+          nextEvents.push({
+            id: `le_${match.id}_${nextMin}_a`,
+            minute: nextMin,
+            type: "goal",
+            team: "away",
+            player: scorerName,
+            detail: "Sontekan Manis"
+          });
+          updateStandingsLocalLive(match.homeTeam, match.awayTeam, 0, 1);
+        }
+
+        // Yellow Card Simulation (~1.5% chance)
+        if (Math.random() < 0.015) {
+          const isHome = Math.random() > 0.5;
+          if (isHome) nextYCard[0] += 1;
+          else nextYCard[1] += 1;
+          const teamLabel = isHome ? "home" : "away";
+          const teamName = isHome ? match.homeTeam : match.awayTeam;
+          const pool = teamScorersFallback[teamName] || ["Bek Tangguh"];
+          const playerName = pool[Math.floor(Math.random() * pool.length)];
+          nextEvents.push({
+            id: `le_${match.id}_${nextMin}_y`,
+            minute: nextMin,
+            type: "yellow_card",
+            team: teamLabel,
+            player: playerName,
+            detail: "Pelanggaran taktikal"
+          });
+        }
+
+        let isLiveResult = true;
+        if (nextMin === 45) {
+          nextStatus = "Babak Pertama Selesai";
+        } else if (nextMin > 45 && nextMin < 48) {
+          nextStatus = "Jeda Babak (Half Time)";
+        } else if (nextMin === 48) {
+          nextStatus = "46'";
+        } else if (nextMin >= 90) {
+          nextStatus = "Selesai";
+          isLiveResult = false;
+          finalizeStandingsLocal(match.homeTeam, match.awayTeam, nextHomeScore, nextAwayScore);
+        }
+
+        return {
+          ...match,
+          minute: nextMin > 90 ? 90 : nextMin,
+          status: nextStatus,
+          homeScore: nextHomeScore,
+          awayScore: nextAwayScore,
+          possession: nextPossession,
+          shots: nextShots,
+          fouls: nextFouls,
+          yellowCards: nextYCard,
+          redCards: nextRCard,
+          events: nextEvents.sort((a, b) => b.minute - a.minute),
+          isLive: isLiveResult
+        };
+      });
+      return nextMatches;
+    });
   };
 
   // Trigger setup on load
@@ -46,13 +232,15 @@ export default function App() {
   // If games are live, we decrement refresh clock. At 0, we refetch API scores.
   useEffect(() => {
     const interval = setInterval(() => {
-      // Check if some matches are live 
-      const someLive = matches.some(m => m.isLive);
-      
       setRefreshSeconds(prev => {
         if (prev <= 1) {
-          // Time to trigger live scores tick from the backend
-          fetchAllData();
+          if (apiError) {
+            // Run simple client-side local simulator if API endpoints are offline!
+            simulateLocalMatchesTick();
+          } else {
+            // Time to trigger live scores tick from the backend
+            fetchAllData();
+          }
           return 8; // reset countdown size
         }
         return prev - 1;
@@ -60,10 +248,17 @@ export default function App() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [matches]);
+  }, [matches, apiError]);
 
   // Handle post reset of simulated scores
   const handleResetSimulation = async () => {
+    if (apiError) {
+      // Local recovery reset
+      setMatches(initialMatches);
+      setStandings(initialStandings);
+      setRefreshSeconds(8);
+      return;
+    }
     try {
       const response = await fetch("/api/matches/reset", { method: "POST" });
       if (response.ok) {
