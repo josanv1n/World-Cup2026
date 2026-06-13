@@ -55,9 +55,126 @@ const teamScorers: Record<string, string[]> = {
   "Italia": ["Mateo Retegui", "Federico Chiesa", "Giacomo Raspadori", "Nicolo Barella"]
 };
 
+// Helper functions to parse Match date and time and assign scores automatically
+function parseMatchDateTime(dateStr: string, timeStr: string): Date {
+  const monthMap: Record<string, number> = {
+    "januari": 0, "februari": 1, "maret": 2, "april": 3, "mei": 4, "juni": 5,
+    "juli": 6, "agustus": 7, "september": 8, "oktober": 9, "november": 10, "desember": 11
+  };
+  
+  const dateParts = dateStr.trim().split(/\s+/);
+  const timeClean = timeStr.replace(/UTC/gi, "").trim();
+  const timeParts = timeClean.split(":");
+  
+  const day = parseInt(dateParts[0], 10) || 1;
+  const monthName = (dateParts[1] || "").toLowerCase();
+  const month = monthMap[monthName] !== undefined ? monthMap[monthName] : 5; // default June
+  const year = parseInt(dateParts[2], 10) || 2026;
+  
+  const hour = parseInt(timeParts[0], 10) || 0;
+  const minute = parseInt(timeParts[1], 10) || 0;
+  
+  return new Date(Date.UTC(year, month, day, hour, minute, 0));
+}
+
+function getDeterministicScore(matchId: string, teamName: string): number {
+  let hash = 0;
+  const str = matchId + teamName;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return Math.abs(hash) % 4; // Returns 0, 1, 2, or 3
+}
+
+function updateMatchStatusesAndScoresByTime() {
+  const now = new Date();
+  let stateChanged = false;
+
+  matches = matches.map(match => {
+    // Skip if match has pre-configured selesai score and is m1, m2, m3, m4 
+    // to preserve accurate scores
+    const isPresetCompleted = ["m1", "m2", "m3", "m4"].includes(match.id);
+    
+    const matchDateObj = parseMatchDateTime(match.date, match.time);
+    const matchStartTime = matchDateObj.getTime();
+    const currentTime = now.getTime();
+    
+    const matchEndTime = matchStartTime + (105 * 60 * 1000); // 105 mins approx
+    const postMatchTime = matchStartTime + (120 * 60 * 1000); // 120 mins approx
+
+    if (currentTime < matchStartTime) {
+      if (match.status !== "Belum Mulai") {
+        match.status = "Belum Mulai";
+        match.isLive = false;
+        match.minute = 0;
+        if (!isPresetCompleted) {
+          match.homeScore = 0;
+          match.awayScore = 0;
+          match.events = [];
+        }
+        stateChanged = true;
+      }
+    } else if (currentTime >= matchStartTime && currentTime <= matchEndTime) {
+      if (!match.isLive && match.status !== "Selesai") {
+        match.isLive = true;
+        match.status = "Live";
+        const currentMinute = Math.min(90, Math.floor((currentTime - matchStartTime) / (60 * 1000)));
+        match.minute = currentMinute;
+        stateChanged = true;
+      }
+    } else if (currentTime > matchEndTime) {
+      if (match.status !== "Selesai") {
+        match.status = "Selesai";
+        match.isLive = false;
+        match.minute = 90;
+        
+        if (!isPresetCompleted && match.homeScore === 0 && match.awayScore === 0 && (!match.events || match.events.length === 0)) {
+          match.homeScore = getDeterministicScore(match.id, match.homeTeam);
+          match.awayScore = getDeterministicScore(match.id, match.awayTeam);
+          
+          const homePool = teamScorers[match.homeTeam] || ["Pemain Bintang"];
+          const awayPool = teamScorers[match.awayTeam] || ["Pemain Bintang"];
+          const events: MatchEvent[] = [];
+          
+          for (let i = 0; i < match.homeScore; i++) {
+            events.push({
+              id: `e_${match.id}_g_h_${i}`,
+              minute: Math.floor(10 + Math.random() * 75),
+              type: "goal",
+              team: "home",
+              player: homePool[i % homePool.length],
+              detail: "Gol Tendangan"
+            });
+          }
+          for (let i = 0; i < match.awayScore; i++) {
+            events.push({
+              id: `e_${match.id}_g_a_${i}`,
+              minute: Math.floor(10 + Math.random() * 75),
+              type: "goal",
+              team: "away",
+              player: awayPool[i % awayPool.length],
+              detail: "Gol Tendangan"
+            });
+          }
+          match.events = events.sort((a, b) => b.minute - a.minute);
+        }
+        stateChanged = true;
+      }
+    }
+    return match;
+  });
+
+  if (stateChanged) {
+    groupStandings = calculateStandings(matches);
+  }
+}
+
 // Simulator Background Loop
 // Ticks every 8 seconds, simulating game progress of live matches
 setInterval(() => {
+  // First update match statuses according to real world clock
+  updateMatchStatusesAndScoresByTime();
+
   let stateChanged = false;
 
   matches = matches.map(match => {
@@ -410,6 +527,9 @@ async function syncDataWithAppsScript() {
 
 // 1. Get matches
 app.get("/api/matches", (req, res) => {
+  // Ensure match statuses and scores are aligned with current time
+  updateMatchStatusesAndScoresByTime();
+
   // Fire and forget the background Apps Script synchronization
   syncDataWithAppsScript().catch(err => {
     console.log("[Apps Script Sync] Gagal menjalankan sinkronisasi latar belakang:", err);
@@ -424,6 +544,9 @@ app.get("/api/matches", (req, res) => {
 
 // 2. Get standings
 app.get("/api/standings", (req, res) => {
+  // Ensure match statuses and scores are aligned with current time
+  updateMatchStatusesAndScoresByTime();
+
   // Fire and forget the background Apps Script synchronization
   syncDataWithAppsScript().catch(err => {
     console.log("[Apps Script Sync] Gagal menjalankan sinkronisasi latar belakang:", err);
@@ -652,8 +775,8 @@ function fetchFlashscoreLiveMatches() {
     matches = [
       { id: "m1", group: "Grup A", homeTeam: "Meksiko", homeFlag: "🇲🇽", awayTeam: "Afrika Selatan", awayFlag: "🇿🇦", homeScore: 2, awayScore: 0, status: "Selesai", date: "11 Juni 2026", time: "20:00", stadium: "Estadio Azteca", redCards: [1, 2] },
       { id: "m2", group: "Grup A", homeTeam: "Korea Selatan", homeFlag: "🇰🇷", awayTeam: "Republik Ceko", awayFlag: "🇨🇿", homeScore: 2, awayScore: 1, status: "Selesai", date: "12 Juni 2026", time: "02:00", stadium: "Centurylink Field" },
-      { id: "m3", group: "Grup B", homeTeam: "Kanada", homeFlag: "🇨🇦", awayTeam: "Bosnia & Herzegovina", awayFlag: "🇧🇦", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "02:00", stadium: "BMO Field" },
-      { id: "m4", group: "Grup C", homeTeam: "Amerika Serikat", homeFlag: "🇺🇸", awayTeam: "Paraguay", awayFlag: "🇵🇾", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "13 Juni 2026", time: "08:00", stadium: "MetLife Stadium" },
+      { id: "m3", group: "Grup B", homeTeam: "Kanada", homeFlag: "🇨🇦", awayTeam: "Bosnia & Herzegovina", awayFlag: "🇧🇦", homeScore: 1, awayScore: 1, status: "Selesai", date: "13 Juni 2026", time: "02:00", stadium: "BMO Field" },
+      { id: "m4", group: "Grup C", homeTeam: "Amerika Serikat", homeFlag: "🇺🇸", awayTeam: "Paraguay", awayFlag: "🇵🇾", homeScore: 4, awayScore: 1, status: "Selesai", date: "13 Juni 2026", time: "08:00", stadium: "MetLife Stadium" },
       { id: "m5", group: "Grup D", homeTeam: "Qatar", homeFlag: "🇶🇦", awayTeam: "Swis", awayFlag: "🇨🇭", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "02:00", stadium: "SoFi Stadium" },
       { id: "m6", group: "Grup E", homeTeam: "Brazil", homeFlag: "🇧🇷", awayTeam: "Maroko", awayFlag: "🇲🇦", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "05:00", stadium: "Mercedes-Benz Stadium" },
       { id: "m7", group: "Grup G", homeTeam: "Haiti", homeFlag: "🇭🇹", awayTeam: "Skotlandia", awayFlag: "🏴󠁧󠁢󠁳󠁣󠁴󠁿", homeScore: 0, awayScore: 0, status: "Belum Mulai", date: "14 Juni 2026", time: "08:00", stadium: "Hard Rock Stadium" }
@@ -661,7 +784,7 @@ function fetchFlashscoreLiveMatches() {
   }
 
   return {
-    source: "https://www.flashscore.co.id/sepak-bola/dunia/piala-dunia/#/SbLsX4y7/peringkat/",
+    source: "https://www.flashscore.co.id/peringkat/zeSHfCx3/SbLsX4y7/#/SbLsX4y7/peringkat/",
     retrievedAt: new Date().toISOString(),
     tournamentName: "DUNIA: Piala Dunia 2026",
     matches: matches

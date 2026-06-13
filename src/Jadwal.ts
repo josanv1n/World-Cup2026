@@ -24,7 +24,7 @@ export const flags: Record<string, string> = {
   "Amerika Serikat": "🇺🇸",
   "Paraguay": "🇵🇾",
   "Haiti": "🇭🇹",
-  "Skotlandia": "🏴󠁧󠁢󠁳󠁣󠁴󠁿",
+  "Skotlandia": "sco",
   "Australia": "🇦🇺",
   "Turki": "🇹🇷",
   "Brazil": "🇧🇷",
@@ -143,8 +143,8 @@ export const groupsMapping: Record<string, { teamName: string; flag: string }[]>
 const matchRaw: MatchConfig[] = [
   { id: "m1", group: "Grup A", homeTeam: "Meksiko", awayTeam: "Afrika Selatan", date: "12 Juni 2026", time: "02:00 UTC", homeScore: 2, awayScore: 0, status: "Selesai", minute: 90 },
   { id: "m2", group: "Grup A", homeTeam: "Republik Korea", awayTeam: "Republik Ceko", date: "12 Juni 2026", time: "09:00 UTC", homeScore: 2, awayScore: 1, status: "Selesai", minute: 90 },
-  { id: "m3", group: "Grup B", homeTeam: "Kanada", awayTeam: "Bosnia dan Herzegovina", date: "13 Juni 2026", time: "02:00 UTC" },
-  { id: "m4", group: "Grup D", homeTeam: "Amerika Serikat", awayTeam: "Paraguay", date: "13 Juni 2026", time: "08:00 UTC" },
+  { id: "m3", group: "Grup B", homeTeam: "Kanada", awayTeam: "Bosnia dan Herzegovina", date: "13 Juni 2026", time: "02:00 UTC", homeScore: 1, awayScore: 1, status: "Selesai", minute: 90 },
+  { id: "m4", group: "Grup D", homeTeam: "Amerika Serikat", awayTeam: "Paraguay", date: "13 Juni 2026", time: "08:00 UTC", homeScore: 4, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m5", group: "Grup C", homeTeam: "Haiti", awayTeam: "Skotlandia", date: "14 Juni 2026", time: "08:00 UTC" },
   { id: "m6", group: "Grup D", homeTeam: "Australia", awayTeam: "Turki", date: "14 Juni 2026", time: "11:00 UTC" },
   { id: "m7", group: "Grup C", homeTeam: "Brazil", awayTeam: "Maroko", date: "14 Juni 2026", time: "05:00 UTC" },
@@ -245,6 +245,20 @@ export const initialMatches: Match[] = matchRaw.map(m => {
       { id: "e6", minute: 58, type: "goal", team: "away", player: "P. Schick" },
       { id: "e7", minute: 75, type: "yellow_card", team: "home", player: "Kim Min-jae" },
       { id: "e8", minute: 82, type: "goal", team: "home", player: "Hwang Hee-chan" }
+    ];
+  } else if (m.id === "m3") {
+    events = [
+      { id: "e9", minute: 34, type: "goal", team: "home", player: "Jonathan David", assistant: "Alphonso Davies" },
+      { id: "e10", minute: 52, type: "yellow_card", team: "away", player: "E. Džeko" },
+      { id: "e11", minute: 79, type: "goal", team: "away", player: "E. Džeko", assistant: "M. Pjanić" }
+    ];
+  } else if (m.id === "m4") {
+    events = [
+      { id: "e12", minute: 14, type: "goal", team: "home", player: "Christian Pulisic", assistant: "W. McKennie" },
+      { id: "e13", minute: 28, type: "goal", team: "home", player: "Folarin Balogun" },
+      { id: "e14", minute: 49, type: "goal", team: "away", player: "A. Sanabria" },
+      { id: "e15", minute: 67, type: "goal", team: "home", player: "Timothy Weah", assistant: "C. Pulisic" },
+      { id: "e16", minute: 85, type: "goal", team: "home", player: "Brandon Vazquez" }
     ];
   }
 
