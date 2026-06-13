@@ -223,11 +223,45 @@ export const initialMatches: Match[] = matchRaw.map(m => {
   const awayScore = m.awayScore ?? 0;
 
   const isSelesai = status === "Selesai";
-  const possession: [number, number] = isSelesai ? [52, 48] : [50, 50];
-  const shots: [number, number] = isSelesai ? [12, 10] : [0, 0];
-  const fouls: [number, number] = isSelesai ? [11, 13] : [0, 0];
-  const yellowCards: [number, number] = isSelesai ? [1, 2] : [0, 0];
-  const redCards: [number, number] = isSelesai ? (m.id === "m1" ? [1, 2] : [0, 0]) : [0, 0];
+  let possession: [number, number] = [50, 50];
+  let shots: [number, number] = [0, 0];
+  let fouls: [number, number] = [0, 0];
+  let yellowCards: [number, number] = [0, 0];
+  let redCards: [number, number] = [0, 0];
+
+  if (isSelesai) {
+    if (m.id === "m1") {
+      possession = [52, 48];
+      shots = [12, 10];
+      fouls = [11, 13];
+      yellowCards = [1, 2];
+      redCards = [1, 2];
+    } else if (m.id === "m2") {
+      possession = [54, 46];
+      shots = [13, 11];
+      fouls = [9, 12];
+      yellowCards = [1, 0];
+      redCards = [0, 0];
+    } else if (m.id === "m3") {
+      possession = [49, 51];
+      shots = [10, 12];
+      fouls = [12, 10];
+      yellowCards = [0, 1];
+      redCards = [0, 0];
+    } else if (m.id === "m4") {
+      possession = [56, 44];
+      shots = [18, 9];
+      fouls = [12, 15];
+      yellowCards = [2, 3];
+      redCards = [0, 0];
+    } else {
+      possession = [52, 48];
+      shots = [12, 10];
+      fouls = [11, 13];
+      yellowCards = [1, 2];
+      redCards = [0, 0];
+    }
+  }
 
   let events = [];
   if (m.id === "m1") {
@@ -254,17 +288,17 @@ export const initialMatches: Match[] = matchRaw.map(m => {
     ];
   } else if (m.id === "m4") {
     events = [
-      { id: "e12", minute: 14, type: "goal", team: "home", player: "Christian Pulisic", assistant: "W. McKennie" },
-      { id: "e13", minute: 28, type: "goal", team: "home", player: "Folarin Balogun" },
-      { id: "e14", minute: 49, type: "goal", team: "away", player: "A. Sanabria" },
-      { id: "e15", minute: 67, type: "goal", team: "home", player: "Timothy Weah", assistant: "C. Pulisic" },
-      { id: "e16", minute: 85, type: "goal", team: "home", player: "Brandon Vazquez" }
+      { id: "e12", minute: 7, type: "goal", team: "home", player: "Damián Bobadilla (Gol Bunuh Diri)", detail: "Gol Bunuh Diri: Pemain Paraguay salah mengantisipasi umpan silang Weston McKennie sehingga bola masuk ke gawangnya sendiri." },
+      { id: "e13", minute: 31, type: "goal", team: "home", player: "Folarin Balogun", assistant: "Christian Pulisic", detail: "Mencetak gol setelah memaksimalkan umpan matang dari Christian Pulisic." },
+      { id: "e14", minute: 45, type: "goal", team: "home", player: "Folarin Balogun", assistant: "Malik Tillman", detail: "Mencetak gol keduanya (brace) sesaat sebelum babak pertama usai setelah menerima umpan jauh dari Malik Tillman." },
+      { id: "e15", minute: 73, type: "goal", team: "away", player: "Maurício", detail: "Mencetak gol hiburan bagi Paraguay setelah memanfaatkan kelengahan barisan pertahanan Amerika Serikat." },
+      { id: "e16", minute: 90, type: "goal", team: "home", player: "Giovanni Reyna", detail: "Mengunci kemenangan telak AS di masa injury time babak kedua lewat tembakan terukur dari luar kotak penalti." }
     ];
   }
 
   return {
     ...m,
-    time: m.time.replace(/\s*UTC\s*$/i, ""),
+    time: m.time.indexOf("WIB") !== -1 ? m.time : m.time.replace(/\s*UTC\s*$/i, " WIB"),
     homeFlag: flags[m.homeTeam] || "🏳️",
     awayFlag: flags[m.awayTeam] || "🏳️",
     homeScore,

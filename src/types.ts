@@ -35,6 +35,8 @@ export interface Match {
   fouls?: [number, number];
   yellowCards?: [number, number];
   redCards?: [number, number];
+  homePenScore?: number;
+  awayPenScore?: number;
 }
 
 export interface Standing {

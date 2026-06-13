@@ -7,7 +7,7 @@ import MatchList from './components/MatchList';
 import MatchDetail from './components/MatchDetail';
 import StandingsTable from './components/StandingsTable';
 import BungBolaChat from './components/BungBolaChat';
-import AppsScriptPortal from './components/AppsScriptPortal';
+import { AIBracketView } from './components/AIBracketView';
 import InteractiveBall from './components/InteractiveBall';
 import { Trophy, Compass, Star, FileCode, MessageSquareCode, CalendarDays, RefreshCw, Sparkles, Tv, HelpCircle, Heart, MessageSquare } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export default function App() {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [standings, setStandings] = useState<Standing[]>(initialStandings);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>("m1"); // Meksiko vs Afrika Selatan by default!
-  const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'gas'>('scores');
+  const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'bracket'>('scores');
   const [refreshSeconds, setRefreshSeconds] = useState(8);
   const [apiError, setApiError] = useState(false);
   const [isFlashscoreDown, setIsFlashscoreDown] = useState(false);
@@ -392,7 +392,7 @@ export default function App() {
 
         {/* TABULAR NAVIGATION BUTTONS WITH HIGH ACCENT ANIMATIONS */}
         <div className="flex justify-center border-b border-white/10 pb-px mt-3 select-none">
-          <nav className="flex gap-2 p-1 bg-black/40 rounded-xl border border-white/10">
+          <nav className="flex flex-wrap justify-center gap-2 p-1 bg-black/40 rounded-xl border border-white/10">
             
             {/* Skor Langsung Tab */}
             <button
@@ -423,6 +423,20 @@ export default function App() {
             >
               <Trophy size={15} />
               <span>Klasemen Grup</span>
+            </button>
+
+            {/* Bagan Fase Gugur */}
+            <button
+              id="navigation-tab-bracket"
+              onClick={() => setActiveTab('bracket')}
+              className={`px-4 sm:px-6 py-2.5 rounded-lg text-xs sm:text-sm font-display font-black flex items-center gap-2 transition-all focus:outline-none relative ${
+                activeTab === 'bracket' 
+                  ? 'bg-white/5 border border-cyan-400/40 text-cyan-400 shadow-lg font-extrabold cyan-glow' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Sparkles size={15} className="text-cyan-400" />
+              <span>Bagan Fase Gugur (Knockout)</span>
             </button>
 
             {/* Tanya AI Commentator Tab */}
@@ -496,7 +510,12 @@ export default function App() {
 
                 {/* Match Profiles component stats (Right) */}
                 <div className="lg:col-span-5 w-full">
-                  <MatchDetail match={selectedMatch} />
+                  <MatchDetail 
+                    match={selectedMatch} 
+                    onUpdateMatch={(updatedMatch) => {
+                      setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
+                    }}
+                  />
                 </div>
               </motion.div>
             )}
@@ -529,17 +548,25 @@ export default function App() {
               </motion.div>
             )}
 
-            {/* TAB 4: Code.GS Apps Script Copycenter Portal */}
-            {activeTab === 'gas' && (
+            {/* TAB 4: Bagan AI & Fase Gugur */}
+            {activeTab === 'bracket' && (
               <motion.div
-                key="gas-tab"
+                key="bracket-tab"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -15 }}
                 transition={{ duration: 0.25 }}
                 className="w-full mt-2"
               >
-                <AppsScriptPortal />
+                <AIBracketView 
+                  matches={matches} 
+                  onReset={handleResetSimulation} 
+                  onUpdateMatches={(updatedMatches) => {
+                    setMatches(updatedMatches);
+                    // Refresh all tables and standings concurrently
+                    fetchAllData();
+                  }}
+                />
               </motion.div>
             )}
 

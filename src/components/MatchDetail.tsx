@@ -5,17 +5,23 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface MatchDetailProps {
   match: Match | null;
+  onUpdateMatch?: (updatedMatch: Match) => void;
 }
 
-export default function MatchDetail({ match }: MatchDetailProps) {
+export default function MatchDetail({ match, onUpdateMatch }: MatchDetailProps) {
   const [geminiAnalysis, setGeminiAnalysis] = useState<string>("");
   const [analyzing, setAnalyzing] = useState(false);
   const [errorText, setErrorText] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const [syncSuccess, setSyncSuccess] = useState(false);
+  const [syncWarning, setSyncWarning] = useState("");
 
   // Clear analysis when match changes so we can grab fresh one
   useEffect(() => {
     setGeminiAnalysis("");
     setErrorText("");
+    setSyncSuccess(false);
+    setSyncWarning("");
   }, [match?.id]);
 
   if (!match) {
@@ -56,6 +62,34 @@ export default function MatchDetail({ match }: MatchDetailProps) {
       }, 1000);
     } finally {
       setAnalyzing(false);
+    }
+  };
+
+  // Perform Gemini + Google Search factual grounding synchronisation 
+  const syncRealDataViaAI = async () => {
+    setSyncing(true);
+    setSyncSuccess(false);
+    setSyncWarning("");
+    try {
+      const response = await fetch(`/api/matches/ai-sync/${match.id}`, {
+        method: "POST"
+      });
+      if (!response.ok) throw new Error("Gagal melakukan sinkronisasi AI.");
+      const data = await response.json();
+      if (data.success && data.match) {
+        if (onUpdateMatch) {
+          onUpdateMatch(data.match);
+        }
+        setSyncSuccess(true);
+        if (data.warning) {
+          setSyncWarning(data.warning);
+        }
+        setTimeout(() => setSyncSuccess(false), 4400);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -146,6 +180,53 @@ export default function MatchDetail({ match }: MatchDetailProps) {
           </div>
         </div>
       </div>
+
+      {/* AI Grounded Sync Banner bar */}
+      {match.status === "Selesai" && (
+        <div id="ai-grounded-sync-banner" className="bg-[#0b1428] border border-cyan-500/20 rounded-xl p-3 flex flex-col sm:flex-row justify-between items-center gap-3 shadow-md relative overflow-hidden">
+          {/* Background glow effects */}
+          <div className="absolute top-0 right-0 w-24 h-24 bg-cyan-500/5 blur-xl pointer-events-none rounded-full" />
+          
+          <div className="flex items-center gap-2 relative z-10 text-left">
+            <Sparkles size={16} className="text-cyan-400 animate-pulse flex-shrink-0" />
+            <div className="text-left">
+              <p className="text-[11px] font-bold text-white tracking-wide">Pencarian Grounding AI (Google Search)</p>
+              <p className="text-[9px] text-slate-400 leading-tight">Hubungkan dengan pangkalan data Google Search untuk sinkronisasi fakta sejarah laga nyata!</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 relative z-10 w-full sm:w-auto justify-end">
+            {syncWarning && (
+              <span className="text-[9px] text-yellow-400 font-mono bg-yellow-500/10 px-2 py-0.5 rounded border border-yellow-500/20 max-w-[150px] truncate" title={syncWarning}>
+                ⚠️ Terjeda
+              </span>
+            )}
+            {syncSuccess && (
+              <span className="text-[9px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1">
+                ✓ Berhasil disinkronkan!
+              </span>
+            )}
+            <button
+              id="ai-grounded-search-btn"
+              onClick={syncRealDataViaAI}
+              disabled={syncing}
+              className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-[10px] sm:text-xs font-bold tracking-wide shadow-lg border border-cyan-400/20 transition-all flex items-center gap-1.5 disabled:opacity-50"
+            >
+              {syncing ? (
+                <>
+                  <RefreshCw size={12} className="animate-spin" />
+                  Mencari data nyata...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={12} className="text-yellow-300" />
+                  Cari Data Asli Laga via AI
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* TABS OF DATA (Chronology Timeline / Match Stats) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-1">
