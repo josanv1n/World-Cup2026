@@ -145,7 +145,7 @@ const matchRaw: MatchConfig[] = [
   { id: "m2", group: "Grup A", homeTeam: "Republik Korea", awayTeam: "Republik Ceko", date: "12 Juni 2026", time: "09:00 UTC", homeScore: 2, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m3", group: "Grup B", homeTeam: "Kanada", awayTeam: "Bosnia dan Herzegovina", date: "13 Juni 2026", time: "02:00 UTC", homeScore: 1, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m4", group: "Grup D", homeTeam: "Amerika Serikat", awayTeam: "Paraguay", date: "13 Juni 2026", time: "08:00 UTC", homeScore: 4, awayScore: 1, status: "Selesai", minute: 90 },
-  { id: "m5", group: "Grup C", homeTeam: "Haiti", awayTeam: "Skotlandia", date: "14 Juni 2026", time: "08:00 UTC", homeScore: 0, awayScore: 2, status: "Selesai", minute: 90 },
+  { id: "m5", group: "Grup C", homeTeam: "Haiti", awayTeam: "Skotlandia", date: "14 Juni 2026", time: "08:00 UTC", homeScore: 0, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m6", group: "Grup D", homeTeam: "Australia", awayTeam: "Turki", date: "14 Juni 2026", time: "11:00 UTC", homeScore: 1, awayScore: 2, status: "Selesai", minute: 90 },
   { id: "m7", group: "Grup C", homeTeam: "Brazil", awayTeam: "Maroko", date: "14 Juni 2026", time: "05:00 UTC", homeScore: 3, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m8", group: "Grup B", homeTeam: "Qatar", awayTeam: "Swiss", date: "14 Juni 2026", time: "02:00 UTC", homeScore: 1, awayScore: 2, status: "Selesai", minute: 90 },

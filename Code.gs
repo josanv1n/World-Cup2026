@@ -252,7 +252,11 @@ function fetchGeminiTournamentScoresAI() {
       if (sched.id === "m1") { homeScore = 2; awayScore = 0; status = "Selesai"; }
       else if (sched.id === "m2") { homeScore = 2; awayScore = 1; status = "Selesai"; }
       else if (sched.id === "m3") { homeScore = 1; awayScore = 1; status = "Selesai"; }
-      else if (sched.id === "m4") { homeScore = 4; awayScore = 1; status = "Selesai"; } // Amerika Serikat vs Paraguay
+      else if (sched.id === "m4") { homeScore = 4; awayScore = 1; status = "Selesai"; }
+      else if (sched.id === "m5") { homeScore = 0; awayScore = 1; status = "Selesai"; }
+      else if (sched.id === "m6") { homeScore = 1; awayScore = 2; status = "Selesai"; }
+      else if (sched.id === "m7") { homeScore = 3; awayScore = 1; status = "Selesai"; }
+      else if (sched.id === "m8") { homeScore = 1; awayScore = 2; status = "Selesai"; }
       else if (aiMatch) {
         // Use AI predicted/fetched values
         homeScore = aiMatch.homeScore;
@@ -324,7 +328,11 @@ function fetchGeminiTournamentScoresAI() {
       if (sched.id === "m1") { homeScore = 2; awayScore = 0; status = "Selesai"; }
       else if (sched.id === "m2") { homeScore = 2; awayScore = 1; status = "Selesai"; }
       else if (sched.id === "m3") { homeScore = 1; awayScore = 1; status = "Selesai"; }
-      else if (sched.id === "m4") { homeScore = 4; awayScore = 1; status = "Selesai"; } // Amerika Serikat vs Paraguay
+      else if (sched.id === "m4") { homeScore = 4; awayScore = 1; status = "Selesai"; }
+      else if (sched.id === "m5") { homeScore = 0; awayScore = 1; status = "Selesai"; }
+      else if (sched.id === "m6") { homeScore = 1; awayScore = 2; status = "Selesai"; }
+      else if (sched.id === "m7") { homeScore = 3; awayScore = 1; status = "Selesai"; }
+      else if (sched.id === "m8") { homeScore = 1; awayScore = 2; status = "Selesai"; }
       else {
         var matchDateObj = parseMatchDateTimeLocal(sched.date, sched.time);
         if (now.getTime() > matchDateObj.getTime() + (105 * 60 * 1000)) {

@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
@@ -273,21 +274,46 @@ function getDeterministicEvents(matchId: string, homeTeam: string, awayTeam: str
   return events.sort((a, b) => b.minute - a.minute);
 }
 
-// Global state for Simulated Matches
-let matches: Match[] = JSON.parse(JSON.stringify(JADWAL_MATCHES)).map((match: Match) => {
-  if (match.status === "Selesai") {
-    const stats = getDeterministicStats(match.id, match.homeTeam, match.awayTeam, match.homeScore, match.awayScore);
-    match.possession = stats.possession;
-    match.shots = stats.shots;
-    match.fouls = stats.fouls;
-    match.yellowCards = stats.yellowCards;
-    match.redCards = stats.redCards;
-    if (!match.events || match.events.length === 0) {
-      match.events = getDeterministicEvents(match.id, match.homeTeam, match.awayTeam, match.homeScore, match.awayScore, stats.yellowCards, stats.redCards);
-    }
+const MATCH_STATE_FILE = path.join(process.cwd(), "src", "matches_state.json");
+
+const saveMatchesState = (matchList: Match[]) => {
+  try {
+    fs.writeFileSync(MATCH_STATE_FILE, JSON.stringify(matchList, null, 2), "utf-8");
+    console.log("[Persistence] Berhasil menyimpan data pertandingan ke matches_state.json.");
+  } catch (err) {
+    console.error("[Persistence] Gagal menyimpan matches_state.json:", err);
   }
-  return match;
-});
+};
+
+// Global state for Simulated Matches
+let matches: Match[] = [];
+
+if (fs.existsSync(MATCH_STATE_FILE)) {
+  try {
+    const rawData = fs.readFileSync(MATCH_STATE_FILE, "utf-8");
+    matches = JSON.parse(rawData);
+    console.log("[Persistence] Berhasil memuat data pertandingan permanen dari matches_state.json.");
+  } catch (err) {
+    console.error("[Persistence] Gagal memuat matches_state.json, menggunakan fallback:", err);
+  }
+}
+
+if (matches.length === 0) {
+  matches = JSON.parse(JSON.stringify(JADWAL_MATCHES)).map((match: Match) => {
+    if (match.status === "Selesai") {
+      const stats = getDeterministicStats(match.id, match.homeTeam, match.awayTeam, match.homeScore, match.awayScore);
+      match.possession = stats.possession;
+      match.shots = stats.shots;
+      match.fouls = stats.fouls;
+      match.yellowCards = stats.yellowCards;
+      match.redCards = stats.redCards;
+      if (!match.events || match.events.length === 0) {
+        match.events = getDeterministicEvents(match.id, match.homeTeam, match.awayTeam, match.homeScore, match.awayScore, stats.yellowCards, stats.redCards);
+      }
+    }
+    return match;
+  });
+}
 
 // Group Standings dynamically calculated from matches
 let groupStandings: Standing[] = calculateStandings(matches);
@@ -405,6 +431,7 @@ function updateMatchStatusesAndScoresByTime() {
 
   if (stateChanged) {
     groupStandings = calculateStandings(matches);
+    saveMatchesState(matches);
   }
 }
 
@@ -551,6 +578,7 @@ setInterval(() => {
 
   if (stateChanged) {
     groupStandings = calculateStandings(matches);
+    saveMatchesState(matches);
   }
 }, 8000);
 
@@ -799,6 +827,16 @@ app.get("/api/standings", (req, res) => {
 
 // 3. User Trigger Match Simulation Refresh (Reset matches if they want)
 app.post("/api/matches/reset", (req, res) => {
+  // Remove persistent state file
+  if (fs.existsSync(MATCH_STATE_FILE)) {
+    try {
+      fs.unlinkSync(MATCH_STATE_FILE);
+      console.log("[Persistence] Berhasil menghapus matches_state.json karena reset.");
+    } catch (err) {
+      console.error("[Persistence] Gagal menghapus matches_state.json saat reset:", err);
+    }
+  }
+
   // Reset matches to initial state from JADWAL_MATCHES (clearing any knockout stages)
   matches = JSON.parse(JSON.stringify(JADWAL_MATCHES)).map((match: Match) => {
     if (match.status === "Selesai") {
@@ -1734,6 +1772,7 @@ app.post("/api/matches/simulate-all-ai", async (req, res) => {
       }
     });
 
+    saveMatchesState(matches);
     res.json({
       success: true,
       message: "Berhasil mensimulasikan seluruh rangkaian acara Piala Dunia 2026 sampai Final melalui Modus AI secara instan!",
@@ -1972,6 +2011,21 @@ Kewajiban Mutlak:
           m.status = "Selesai";
           m.isLive = false;
           m.minute = 90;
+
+          // Hydrate stats and events for forced matches if missing or empty
+          if (!m.possession || m.possession[0] === 0 || m.possession[1] === 0) {
+            const stats = getDeterministicStats(m.id, m.homeTeam, m.awayTeam, m.homeScore, m.awayScore);
+            m.possession = stats.possession;
+            m.shots = stats.shots;
+            m.fouls = stats.fouls;
+            m.yellowCards = stats.yellowCards;
+            m.redCards = stats.redCards;
+          }
+
+          if (!m.events || m.events.length === 0) {
+            const stats = getDeterministicStats(m.id, m.homeTeam, m.awayTeam, m.homeScore, m.awayScore);
+            m.events = getDeterministicEvents(m.id, m.homeTeam, m.awayTeam, m.homeScore, m.awayScore, stats.yellowCards, stats.redCards);
+          }
         }
       });
       groupStandings = calculateStandings(matches);
@@ -1999,6 +2053,21 @@ Kewajiban Mutlak:
         m.status = "Selesai";
         m.isLive = false;
         m.minute = 90;
+
+        // Hydrate stats and events for forced matches if missing or empty
+        if (!m.possession || m.possession[0] === 0 || m.possession[1] === 0) {
+          const mStats = getDeterministicStats(m.id, m.homeTeam, m.awayTeam, m.homeScore, m.awayScore);
+          m.possession = mStats.possession;
+          m.shots = mStats.shots;
+          m.fouls = mStats.fouls;
+          m.yellowCards = mStats.yellowCards;
+          m.redCards = mStats.redCards;
+        }
+
+        if (!m.events || m.events.length === 0) {
+          const mStats = getDeterministicStats(m.id, m.homeTeam, m.awayTeam, m.homeScore, m.awayScore);
+          m.events = getDeterministicEvents(m.id, m.homeTeam, m.awayTeam, m.homeScore, m.awayScore, mStats.yellowCards, mStats.redCards);
+        }
       }
     });
     groupStandings = calculateStandings(matches);
@@ -2153,6 +2222,7 @@ Kewajiban Mutlak:
         groupStandings = calculateStandings(matches.filter(m => m.id.startsWith("m")));
         isFlashscoreDown = false;
         
+        saveMatchesState(matches);
         return res.json({ success: true, matches });
       }
     }
@@ -2184,7 +2254,7 @@ Kewajiban Mutlak:
           matchObj.awayScore = 1;
         } else if (id === "m5") {
           matchObj.homeScore = 0; // Haiti vs Skotlandia
-          matchObj.awayScore = 2;
+          matchObj.awayScore = 1;
         } else if (id === "m6") {
           matchObj.homeScore = 1; // Australia vs Turki
           matchObj.awayScore = 2;
@@ -2209,6 +2279,7 @@ Kewajiban Mutlak:
     groupStandings = calculateStandings(matches.filter(m => m.id.startsWith("m")));
     isFlashscoreDown = false;
 
+    saveMatchesState(matches);
     return res.json({ 
       success: true, 
       matches, 
