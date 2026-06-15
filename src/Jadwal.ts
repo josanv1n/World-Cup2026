@@ -266,12 +266,11 @@ export const initialMatches: Match[] = matchRaw.map(m => {
   let events = [];
   if (m.id === "m1") {
     events = [
-      { id: "e1", minute: 12, type: "goal", team: "home", player: "R. Jiménez", assistant: "H. Lozano" },
-      { id: "e2", minute: 40, type: "yellow_card", team: "away", player: "T. Mokoena" },
-      { id: "e3", minute: 64, type: "goal", team: "home", player: "H. Lozano" },
-      { id: "e1_red", minute: 73, type: "red_card", team: "home", player: "E. Álvarez" },
-      { id: "e4", minute: 79, type: "red_card", team: "away", player: "T. Mokoena" },
-      { id: "e2_red", minute: 88, type: "red_card", team: "away", player: "P. Tau" }
+      { id: "e1", minute: 9, type: "goal", team: "home", player: "Julián Quiñones", assistant: "Erik Lira", detail: "Mencetak gol pertama sekaligus gol perdana di turnamen Piala Dunia 2026 lewat tembakan kaki kanan setelah menerima operan dari Erik Lira." },
+      { id: "e2", minute: 49, type: "red_card", team: "away", player: "Sphephelo Sithole", detail: "Menerima kartu merah langsung setelah melakukan pelanggaran taktis ekstrem." },
+      { id: "e3", minute: 67, type: "goal", team: "home", player: "Raúl Jiménez", assistant: "Roberto Alvarado", detail: "Mengunci kemenangan Meksiko lewat sundulan kepala yang memanfaatkan umpan silang matang dari Roberto Alvarado." },
+      { id: "e4", minute: 84, type: "red_card", team: "away", player: "Themba Zwane", detail: "Kartu kuning kedua setelah menjatuhkan striker lawan." },
+      { id: "e5", minute: 93, type: "red_card", team: "home", player: "César Montes", detail: "Kartu merah langsung setelah mengalami ketegangan fisik di area kotak penalti." }
     ];
   } else if (m.id === "m2") {
     events = [

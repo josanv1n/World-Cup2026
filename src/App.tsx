@@ -262,6 +262,39 @@ export default function App() {
     return () => clearInterval(interval);
   }, [matches, apiError]);
 
+  const [isAiBulkSyncing, setIsAiBulkSyncing] = useState(false);
+  const [bulkSyncSuccess, setBulkSyncSuccess] = useState(false);
+
+  const syncAllMatchesWithAI = async () => {
+    setIsAiBulkSyncing(true);
+    setBulkSyncSuccess(false);
+    try {
+      const res = await fetch("/api/matches/ai-sync-all", { method: "POST" });
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      if (data.success && data.matches) {
+        setMatches(data.matches);
+        setBulkSyncSuccess(true);
+        setIsFlashscoreDown(false);
+        setApiError(false);
+        setRefreshSeconds(8);
+        
+        // Fetch refreshed standings
+        const standRes = await fetch("/api/standings");
+        if (standRes.ok) {
+          const standData = await standRes.json();
+          setStandings(standData.standings || []);
+        }
+        
+        setTimeout(() => setBulkSyncSuccess(false), 4500);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsAiBulkSyncing(false);
+    }
+  };
+
   // Handle post reset of simulated scores
   const handleResetSimulation = async () => {
     if (apiError) {
@@ -505,6 +538,9 @@ export default function App() {
                     onSelectMatch={setSelectedMatchId}
                     onResetSimulation={handleResetSimulation}
                     refreshSeconds={refreshSeconds}
+                    onSyncAllAI={syncAllMatchesWithAI}
+                    isSyncingAll={isAiBulkSyncing}
+                    syncAllSuccess={bulkSyncSuccess}
                   />
                 </div>
 

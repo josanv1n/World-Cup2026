@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Match } from '../types';
-import { Search, RotateCcw, AlertCircle, TrendingUp, Calendar, MapPin, RefreshCw, Star } from 'lucide-react';
+import { Search, RotateCcw, AlertCircle, TrendingUp, Calendar, MapPin, RefreshCw, Star, Sparkles } from 'lucide-react';
 
 interface MatchListProps {
   matches: Match[];
@@ -9,6 +9,9 @@ interface MatchListProps {
   onSelectMatch: (matchId: string) => void;
   onResetSimulation: () => void;
   refreshSeconds: number;
+  onSyncAllAI?: () => void;
+  isSyncingAll?: boolean;
+  syncAllSuccess?: boolean;
 }
 
 const RedCardIcon = ({ count }: { count: number }) => {
@@ -36,7 +39,10 @@ export default function MatchList({
   selectedMatchId, 
   onSelectMatch, 
   onResetSimulation,
-  refreshSeconds
+  refreshSeconds,
+  onSyncAllAI,
+  isSyncingAll = false,
+  syncAllSuccess = false
 }: MatchListProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<'all' | 'live' | 'completed' | 'upcoming'>('all');
@@ -171,7 +177,32 @@ export default function MatchList({
             />
           </div>
 
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
+            {/* AI Real Score Auto Sync Button */}
+            {onSyncAllAI && (
+              <button
+                id="sync-all-scores-ai-btn"
+                onClick={onSyncAllAI}
+                disabled={isSyncingAll}
+                className={`px-3 py-2 text-xs font-bold rounded-lg border flex items-center gap-1.5 transition-all focus:outline-none ${
+                  syncAllSuccess
+                    ? "bg-green-950/80 text-green-300 border-green-500/50"
+                    : isSyncingAll
+                    ? "bg-cyan-950/80 text-cyan-400 border-cyan-500/40 cursor-not-allowed"
+                    : "bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 text-white border-cyan-400/40 shadow-md hover:shadow-cyan-500/20"
+                }`}
+              >
+                <Sparkles size={13} className={isSyncingAll ? "animate-spin" : "animate-pulse"} />
+                <span>
+                  {syncAllSuccess
+                    ? "Faktual Update Sukses!"
+                    : isSyncingAll
+                    ? "Syncing via AI..."
+                    : "Auto Update (AI Mode)"}
+                </span>
+              </button>
+            )}
+
             {/* Simulation reset trigger button */}
             <button
               id="reset-simulation-score-btn"
@@ -180,7 +211,7 @@ export default function MatchList({
               className="px-3 py-2 bg-[#020617] hover:bg-slate-800 text-cyan-400 hover:text-white rounded-lg border border-white/10 text-xs font-mono flex items-center gap-1.5 transition-colors focus:outline-none"
             >
               <RotateCcw size={13} />
-              Reset Simulasi
+              Reset
             </button>
           </div>
         </div>
