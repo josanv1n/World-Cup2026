@@ -333,7 +333,7 @@ function updateMatchStatusesAndScoresByTime() {
   matches = matches.map(match => {
     // Skip if match has pre-configured selesai score and is m1, m2, m3, m4 
     // to preserve accurate scores
-    const isPresetCompleted = ["m1", "m2", "m3", "m4"].includes(match.id);
+    const isPresetCompleted = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"].includes(match.id);
     
     if (isPresetCompleted) {
       if (match.status !== "Selesai") {
@@ -1963,7 +1963,20 @@ Kewajiban Mutlak:
         }));
       }
 
-      return res.json({ success: true, match: matchObj });
+      // Force update all played matches according to Jadwal.ts
+      matches.forEach(m => {
+        const original = JADWAL_MATCHES.find(orig => orig.id === m.id);
+        if (original && ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"].includes(m.id)) {
+          m.homeScore = original.homeScore ?? m.homeScore;
+          m.awayScore = original.awayScore ?? m.awayScore;
+          m.status = "Selesai";
+          m.isLive = false;
+          m.minute = 90;
+        }
+      });
+      groupStandings = calculateStandings(matches);
+
+      return res.json({ success: true, match: matchObj, allMatches: matches, standings: groupStandings });
     } else {
       throw new Error("Client Gemini tidak siap.");
     }
@@ -1977,9 +1990,24 @@ Kewajiban Mutlak:
     matchObj.redCards = stats.redCards;
     matchObj.events = getDeterministicEvents(matchObj.id, matchObj.homeTeam, matchObj.awayTeam, matchObj.homeScore, matchObj.awayScore, stats.yellowCards, stats.redCards);
 
+    // Force update all played matches according to Jadwal.ts
+    matches.forEach(m => {
+      const original = JADWAL_MATCHES.find(orig => orig.id === m.id);
+      if (original && ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8"].includes(m.id)) {
+        m.homeScore = original.homeScore ?? m.homeScore;
+        m.awayScore = original.awayScore ?? m.awayScore;
+        m.status = "Selesai";
+        m.isLive = false;
+        m.minute = 90;
+      }
+    });
+    groupStandings = calculateStandings(matches);
+
     return res.json({
       success: true,
       match: matchObj,
+      allMatches: matches,
+      standings: groupStandings,
       warning: "Menggunakan pemodelan simulasi tervalidasi karena keterbatasan jalur frekuensi piala dunia."
     });
   }

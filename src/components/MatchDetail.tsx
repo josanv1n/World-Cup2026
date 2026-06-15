@@ -6,9 +6,10 @@ import { motion, AnimatePresence } from 'motion/react';
 interface MatchDetailProps {
   match: Match | null;
   onUpdateMatch?: (updatedMatch: Match) => void;
+  onUpdateAllMatches?: (allMatches: Match[]) => void;
 }
 
-export default function MatchDetail({ match, onUpdateMatch }: MatchDetailProps) {
+export default function MatchDetail({ match, onUpdateMatch, onUpdateAllMatches }: MatchDetailProps) {
   const [geminiAnalysis, setGeminiAnalysis] = useState<string>("");
   const [analyzing, setAnalyzing] = useState(false);
   const [errorText, setErrorText] = useState("");
@@ -79,6 +80,9 @@ export default function MatchDetail({ match, onUpdateMatch }: MatchDetailProps) 
       if (data.success && data.match) {
         if (onUpdateMatch) {
           onUpdateMatch(data.match);
+        }
+        if (data.allMatches && onUpdateAllMatches) {
+          onUpdateAllMatches(data.allMatches);
         }
         setSyncSuccess(true);
         if (data.warning) {

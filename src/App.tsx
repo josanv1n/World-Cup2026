@@ -551,6 +551,18 @@ export default function App() {
                     onUpdateMatch={(updatedMatch) => {
                       setMatches(prev => prev.map(m => m.id === updatedMatch.id ? updatedMatch : m));
                     }}
+                    onUpdateAllMatches={async (allMatches) => {
+                      setMatches(allMatches);
+                      try {
+                        const standRes = await fetch("/api/standings");
+                        if (standRes.ok) {
+                          const standData = await standRes.json();
+                          setStandings(standData.standings || []);
+                        }
+                      } catch (err) {
+                        console.error("Gagal sinkronisasi klasemen:", err);
+                      }
+                    }}
                   />
                 </div>
               </motion.div>
