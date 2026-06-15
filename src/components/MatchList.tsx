@@ -8,7 +8,6 @@ interface MatchListProps {
   selectedMatchId: string | null;
   onSelectMatch: (matchId: string) => void;
   onResetSimulation: () => void;
-  refreshSeconds: number;
   onSyncAllAI?: () => void;
   isSyncingAll?: boolean;
   syncAllSuccess?: boolean;
@@ -39,7 +38,6 @@ export default function MatchList({
   selectedMatchId, 
   onSelectMatch, 
   onResetSimulation,
-  refreshSeconds,
   onSyncAllAI,
   isSyncingAll = false,
   syncAllSuccess = false
@@ -195,10 +193,10 @@ export default function MatchList({
                 <Sparkles size={13} className={isSyncingAll ? "animate-spin" : "animate-pulse"} />
                 <span>
                   {syncAllSuccess
-                    ? "Faktual Update Sukses!"
+                    ? "Update Sukses!"
                     : isSyncingAll
-                    ? "Syncing via AI..."
-                    : "Auto Update (AI Mode)"}
+                    ? "Mengupdate Skor..."
+                    : "Update Live Score"}
                 </span>
               </button>
             )}
@@ -216,7 +214,7 @@ export default function MatchList({
           </div>
         </div>
 
-        {/* Quick Filter tabs & ticker timer progress bar */}
+        {/* Quick Filter tabs & source link */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3">
           <div className="flex gap-1">
             {(['all', 'live', 'completed', 'upcoming'] as const).map(type => (
@@ -235,13 +233,18 @@ export default function MatchList({
             ))}
           </div>
 
-          {/* Sync Engine Progress Indicator */}
-          <div className="flex items-center gap-1.5 text-[11px] text-cyan-400 font-mono">
-            <RefreshCw size={11} className="animate-spin text-pink-400" />
-            <span>Refresh angka in:</span>
-            <span className="px-1.5 py-0.2 bg-white/5 rounded text-cyan-300 font-bold">
-              {refreshSeconds}s
-            </span>
+          {/* Reference Source Link */}
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono">
+            <span>Sumber:</span>
+            <a
+              id="flashscore-source-link"
+              href="https://www.flashscore.co.id/sepak-bola/dunia/piala-dunia/#/SbLsX4y7/peringkat/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-cyan-400 hover:text-cyan-300 hover:underline font-bold transition-all flex items-center gap-1"
+            >
+              Flashscore Dunia Peringkat 🔗
+            </a>
           </div>
         </div>
       </div>

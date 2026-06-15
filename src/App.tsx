@@ -16,7 +16,6 @@ export default function App() {
   const [standings, setStandings] = useState<Standing[]>(initialStandings);
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>("m1"); // Meksiko vs Afrika Selatan by default!
   const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'bracket'>('scores');
-  const [refreshSeconds, setRefreshSeconds] = useState(8);
   const [apiError, setApiError] = useState(false);
   const [isFlashscoreDown, setIsFlashscoreDown] = useState(false);
   const [showApiWarning, setShowApiWarning] = useState(true);
@@ -240,28 +239,6 @@ export default function App() {
     fetchAllData();
   }, []);
 
-  // Background ticker loop that requests data updates cleanly
-  // If games are live, we decrement refresh clock. At 0, we refetch API scores.
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setRefreshSeconds(prev => {
-        if (prev <= 1) {
-          if (apiError) {
-            // Run simple client-side local simulator if API endpoints are offline!
-            simulateLocalMatchesTick();
-          } else {
-            // Time to trigger live scores tick from the backend
-            fetchAllData();
-          }
-          return 8; // reset countdown size
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [matches, apiError]);
-
   const [isAiBulkSyncing, setIsAiBulkSyncing] = useState(false);
   const [bulkSyncSuccess, setBulkSyncSuccess] = useState(false);
 
@@ -277,7 +254,6 @@ export default function App() {
         setBulkSyncSuccess(true);
         setIsFlashscoreDown(false);
         setApiError(false);
-        setRefreshSeconds(8);
         
         // Fetch refreshed standings
         const standRes = await fetch("/api/standings");
@@ -301,7 +277,6 @@ export default function App() {
       // Local recovery reset
       setMatches(initialMatches);
       setStandings(initialStandings);
-      setRefreshSeconds(8);
       return;
     }
     try {
@@ -309,7 +284,6 @@ export default function App() {
       if (response.ok) {
         const data = await response.json();
         setMatches(data.matches || []);
-        setRefreshSeconds(8);
         // Refresh standings as well
         const standRes = await fetch("/api/standings");
         if (standRes.ok) {
@@ -410,10 +384,10 @@ export default function App() {
           <div className="flex flex-col items-center md:items-end font-mono text-xs text-slate-400 gap-1 select-none bg-black/40 p-3 rounded-xl border border-white/10">
             <span className="text-[10px] text-cyan-400 flex items-center gap-1.5 uppercase font-bold">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              SERVER SYNC ACTIVE
+              MANUAL REFRESH ACTIVE
             </span>
             <span>MetLife • Estadio Azteca • BC Place</span>
-            <span>Refresh: <span className="text-pink-400 font-bold">{refreshSeconds}s</span></span>
+            <span>Sumber: <a href="https://www.flashscore.co.id/sepak-bola/dunia/piala-dunia/#/SbLsX4y7/peringkat/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 font-bold hover:underline">Flashscore</a></span>
           </div>
 
         </header>
@@ -537,7 +511,6 @@ export default function App() {
                     selectedMatchId={selectedMatchId}
                     onSelectMatch={setSelectedMatchId}
                     onResetSimulation={handleResetSimulation}
-                    refreshSeconds={refreshSeconds}
                     onSyncAllAI={syncAllMatchesWithAI}
                     isSyncingAll={isAiBulkSyncing}
                     syncAllSuccess={bulkSyncSuccess}
