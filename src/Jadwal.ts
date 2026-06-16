@@ -153,7 +153,7 @@ const matchRaw: MatchConfig[] = [
   { id: "m10", group: "Grup E", homeTeam: "Jerman", awayTeam: "Curaçao", date: "15 Juni 2026", time: "00:00 UTC", homeScore: 7, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m11", group: "Grup F", homeTeam: "Belanda", awayTeam: "Jepang", date: "15 Juni 2026", time: "03:00 UTC", homeScore: 2, awayScore: 2, status: "Selesai", minute: 90 },
   { id: "m12", group: "Grup F", homeTeam: "Swedia", awayTeam: "Tunisia", date: "15 Juni 2026", time: "09:00 UTC", homeScore: 5, awayScore: 1, status: "Selesai", minute: 90 },
-  { id: "m13", group: "Grup H", homeTeam: "Arab Saudi", awayTeam: "Uruguay", date: "16 Juni 2026", time: "05:00 UTC" },
+  { id: "m13", group: "Grup H", homeTeam: "Arab Saudi", awayTeam: "Uruguay", date: "16 Juni 2026", time: "05:00 UTC", homeScore: 1, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m14", group: "Grup H", homeTeam: "Spanyol", awayTeam: "Tanjung Verde", date: "15 Juni 2026", time: "23:00 UTC", homeScore: 0, awayScore: 1, status: "Selesai", minute: 90 },
   { id: "m15", group: "Grup G", homeTeam: "Iran", awayTeam: "Selandia Baru", date: "16 Juni 2026", time: "08:00 UTC", homeScore: 1, awayScore: 0, status: "Selesai", minute: 90 },
   { id: "m16", group: "Grup G", homeTeam: "Belgia", awayTeam: "Mesir", date: "16 Juni 2026", time: "02:00 UTC", homeScore: 0, awayScore: 2, status: "Selesai", minute: 90 },
