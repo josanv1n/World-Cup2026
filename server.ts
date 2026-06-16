@@ -1680,7 +1680,7 @@ app.post("/api/gemini/chat", async (req, res) => {
       throw new Error("Sistem GoogleGenAI belum siap.");
     }
   } catch (error: any) {
-    console.error("Kesalahan Gemini API:", error);
+    console.warn("[Chat Warning] Gemini API limit or unavailability. Using fallback response: " + (error?.message || error));
     // Provide a beautiful fallback commentary responses depending on matches to simulate Gemini being active
     const fallbacks = [
       "JEBREEET! Tembakan geledek yang luar biasa spektakuler, Bung! Bola meluncur mulus bagaikan anak panah terlepas dari busurnya! Pertahanan lawan kocar-kacir membendung pergerakan taktis!",
@@ -1889,7 +1889,7 @@ Kewajiban Mutlak:
       throw new Error("Client Gemini tidak siap.");
     }
   } catch (err: any) {
-    console.error("[AI Grounded Sync Error]:", err);
+    console.warn("[AI Grounded Sync Warning] Gemini API unavailable, utilizing deterministic stats modeling: " + (err?.message || err));
     const stats = getDeterministicStats(matchObj.id, matchObj.homeTeam, matchObj.awayTeam, matchObj.homeScore, matchObj.awayScore);
     matchObj.possession = stats.possession;
     matchObj.shots = stats.shots;
@@ -2082,7 +2082,7 @@ Kewajiban Mutlak:
     }
     throw new Error("Konektivitas Gemini offline.");
   } catch (err: any) {
-    console.error("[Bulk AI Sync Error]:", err);
+    console.warn("[Bulk AI Sync Warning] Gemini API unavailable, utilizing high-fidelity deterministic sync fallbacks: " + (err?.message || err));
     
     // In case of any API error or timeout, we do high-quality deterministic updates
     const targetMatchIds = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m13", "m14", "m15", "m16"];
