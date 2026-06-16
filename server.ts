@@ -358,7 +358,7 @@ function updateMatchStatusesAndScoresByTime() {
 
   matches = matches.map(match => {
     // Skip if match has pre-configured selesai score to preserve accurate scores
-    const isPresetCompleted = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"].includes(match.id);
+    const isPresetCompleted = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m14", "m15", "m16"].includes(match.id);
     
     if (isPresetCompleted) {
       if (match.status !== "Selesai") {
@@ -523,7 +523,7 @@ function finalizeStandings(homeTeam: string, awayTeam: string, homeScore: number
 }
 
 
-const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || process.env.VITE_APPS_SCRIPT_URL || "";
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL || process.env.VITE_APPS_SCRIPT_URL || "https://script.google.com/macros/s/AKfycbyhHPQsTnnER0s2yxzqNm6ae0dMLuJCxKEOXMz0MJbY3alCPEQ_sj8jDEjOAy_TRS63/exec";
 
 let lastSyncTime = 0;
 const SYNC_COOLDOWN = 45000; // 45 seconds cooldown between sync requests
@@ -1859,7 +1859,7 @@ Kewajiban Mutlak:
       // Force update all played matches according to Jadwal.ts
       matches.forEach(m => {
         const original = JADWAL_MATCHES.find(orig => orig.id === m.id);
-        if (original && ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"].includes(m.id)) {
+        if (original && ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m14", "m15", "m16"].includes(m.id)) {
           m.homeScore = original.homeScore ?? m.homeScore;
           m.awayScore = original.awayScore ?? m.awayScore;
           m.status = "Selesai";
@@ -1901,7 +1901,7 @@ Kewajiban Mutlak:
     // Force update all played matches according to Jadwal.ts
     matches.forEach(m => {
       const original = JADWAL_MATCHES.find(orig => orig.id === m.id);
-      if (original && ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"].includes(m.id)) {
+      if (original && ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m14", "m15", "m16"].includes(m.id)) {
         m.homeScore = original.homeScore ?? m.homeScore;
         m.awayScore = original.awayScore ?? m.awayScore;
         m.status = "Selesai";
@@ -1943,11 +1943,11 @@ app.post("/api/matches/ai-sync-all", async (req, res) => {
     if (ai) {
       console.log("[Bulk AI Sync] Menjalankan pembaruan skor massal menggunakan Google Search Grounding...");
 
-      // We query the first 12 matches (June 11th - June 15th) which are either completed or live in 2026 World Cup
-      const playedMatchesList = matches.filter(m => ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"].includes(m.id));
+      // We query the first 15 matches (June 11th - June 16th) which are either completed or live in 2026 World Cup
+      const playedMatchesList = matches.filter(m => ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m14", "m15", "m16"].includes(m.id));
       const matchQueries = playedMatchesList.map(m => `${m.id}: ${m.homeTeam} vs ${m.awayTeam} (${m.date})`).join("\n");
 
-      const prompt = `Cari hasil pertandingan asli terupdate dari turnamen Piala Dunia FIFA 2026 yang berlangsung pada tanggal 11-15 Juni 2026 di kehidupan nyata.
+      const prompt = `Cari hasil pertandingan asli terupdate dari turnamen Piala Dunia FIFA 2026 yang berlangsung pada tanggal 11-16 Juni 2026 di kehidupan nyata.
 Gunakan teknologi Google Search Grounding untuk melacak hasil skor riil, nama stadion, kota dan status pertandingan.
 
 Daftar pertandingan sepak bola resmi turnamen kami:
@@ -2085,7 +2085,7 @@ Kewajiban Mutlak:
     console.error("[Bulk AI Sync Error]:", err);
     
     // In case of any API error or timeout, we do high-quality deterministic updates
-    const targetMatchIds = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12"];
+    const targetMatchIds = ["m1", "m2", "m3", "m4", "m5", "m6", "m7", "m8", "m9", "m10", "m11", "m12", "m14", "m15", "m16"];
     targetMatchIds.forEach(id => {
       const matchObj = matches.find(m => m.id === id);
       if (matchObj) {
@@ -2130,6 +2130,15 @@ Kewajiban Mutlak:
         } else if (id === "m12") {
           matchObj.homeScore = 5; // Swedia vs Tunisia
           matchObj.awayScore = 1;
+        } else if (id === "m14") {
+          matchObj.homeScore = 0; // Spanyol vs Tanjung Verde
+          matchObj.awayScore = 1;
+        } else if (id === "m15") {
+          matchObj.homeScore = 1; // Iran vs Selandia Baru
+          matchObj.awayScore = 0;
+        } else if (id === "m16") {
+          matchObj.homeScore = 0; // Belgia vs Mesir
+          matchObj.awayScore = 2;
         }
 
         const stats = getDeterministicStats(matchObj.id, matchObj.homeTeam, matchObj.awayTeam, matchObj.homeScore, matchObj.awayScore);

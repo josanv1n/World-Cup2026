@@ -11,6 +11,10 @@ import { AIBracketView } from './components/AIBracketView';
 import InteractiveBall from './components/InteractiveBall';
 import { Trophy, Compass, Star, FileCode, MessageSquareCode, CalendarDays, RefreshCw, Sparkles, Tv, HelpCircle, Heart, MessageSquare } from 'lucide-react';
 
+const APPS_SCRIPT_URL = ((import.meta as any).env?.APPS_SCRIPT_URL as string) || 
+                       ((import.meta as any).env?.VITE_APPS_SCRIPT_URL as string) || 
+                       "https://script.google.com/macros/s/AKfycbyhHPQsTnnER0s2yxzqNm6ae0dMLuJCxKEOXMz0MJbY3alCPEQ_sj8jDEjOAy_TRS63/exec";
+
 export default function App() {
   const [matches, setMatches] = useState<Match[]>(initialMatches);
   const [standings, setStandings] = useState<Standing[]>(initialStandings);
@@ -50,6 +54,76 @@ export default function App() {
     } catch {
       setApiError(true);
       setIsFlashscoreDown(true);
+
+      // Fallback to client-side direct request to Google Apps Script if server endpoints are missing/error (e.g. on Vercel)
+      try {
+        console.log("[Client Fallback Web App Sync] Fetching scores directly from Apps Script URL on client...");
+        let scoresSuccess = false;
+        let standingsSuccess = false;
+
+        const resScores = await fetch(`${APPS_SCRIPT_URL}?action=getScores`);
+        if (resScores.ok) {
+          const textScores = await resScores.text();
+          if (!textScores.trim().startsWith("<") && !textScores.includes("<html") && !textScores.includes("<!DOCTYPE")) {
+            const data = JSON.parse(textScores);
+            if (data && Array.isArray(data.matches)) {
+              setMatches(prevMatches => {
+                const updated = prevMatches.map(m => {
+                  const liveMatch = data.matches.find((lm: any) => lm.id === m.id || lm.homeTeam === m.homeTeam);
+                  if (liveMatch) {
+                    return {
+                      ...m,
+                      homeScore: liveMatch.homeScore !== undefined ? liveMatch.homeScore : m.homeScore,
+                      awayScore: liveMatch.awayScore !== undefined ? liveMatch.awayScore : m.awayScore,
+                      status: liveMatch.status || m.status,
+                      isLive: liveMatch.status !== "Selesai" && (liveMatch.status && (liveMatch.status.includes("Live") || liveMatch.status.includes("'")))
+                    };
+                  }
+                  return m;
+                });
+                return updated;
+              });
+              scoresSuccess = true;
+            }
+          }
+        }
+
+        const resStandings = await fetch(`${APPS_SCRIPT_URL}?action=getStandings`);
+        if (resStandings.ok) {
+          const textStandings = await resStandings.text();
+          if (!textStandings.trim().startsWith("<") && !textStandings.includes("<html") && !textStandings.includes("<!DOCTYPE")) {
+            const liveStandings = JSON.parse(textStandings);
+            if (Array.isArray(liveStandings) && liveStandings.length > 0) {
+              setStandings(prevGroups => {
+                return prevGroups.map(group => {
+                  const updatedTeams = group.teams.map(team => {
+                    const liveTeam = liveStandings.find((t: any) => t.team === team.teamName || t.teamName === team.teamName);
+                    if (liveTeam) {
+                      return {
+                        ...team,
+                        played: liveTeam.main !== undefined ? liveTeam.main : team.played,
+                        pts: liveTeam.poin !== undefined ? liveTeam.poin : team.pts
+                      };
+                    }
+                    return team;
+                  });
+                  const sortedTeams = [...updatedTeams].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+                  const rankedTeams = sortedTeams.map((t, idx) => ({ ...t, rank: idx + 1 }));
+                  return { ...group, teams: rankedTeams };
+                });
+              });
+              standingsSuccess = true;
+            }
+          }
+        }
+
+        if (scoresSuccess && standingsSuccess) {
+          setApiError(false); // Since we got the real data from Apps Script direct call!
+          setIsFlashscoreDown(false);
+        }
+      } catch (clientErr) {
+        console.error("[Client Fallback Web App Sync] Failed client-side remote fetch:", clientErr);
+      }
     }
   };
 
@@ -246,6 +320,78 @@ export default function App() {
     setIsAiBulkSyncing(true);
     setBulkSyncSuccess(false);
     try {
+      if (apiError) {
+        // Direct Client Fallback to Apps Script Web App when running standalone/Vercel
+        console.log("[Client Fallback AI Syncer] Syncing directly with Apps Script via Client Side...");
+        let scoresSuccess = false;
+        let standingsSuccess = false;
+
+        const resScores = await fetch(`${APPS_SCRIPT_URL}?action=getScores`);
+        if (resScores.ok) {
+          const textScores = await resScores.text();
+          if (!textScores.trim().startsWith("<") && !textScores.includes("<html") && !textScores.includes("<!DOCTYPE")) {
+            const data = JSON.parse(textScores);
+            if (data && Array.isArray(data.matches)) {
+              setMatches(prevMatches => {
+                return prevMatches.map(m => {
+                  const liveMatch = data.matches.find((lm: any) => lm.id === m.id || lm.homeTeam === m.homeTeam);
+                  if (liveMatch) {
+                    return {
+                      ...m,
+                      homeScore: liveMatch.homeScore !== undefined ? liveMatch.homeScore : m.homeScore,
+                      awayScore: liveMatch.awayScore !== undefined ? liveMatch.awayScore : m.awayScore,
+                      status: liveMatch.status || m.status,
+                      isLive: liveMatch.status !== "Selesai" && (liveMatch.status && (liveMatch.status.includes("Live") || liveMatch.status.includes("'")))
+                    };
+                  }
+                  return m;
+                });
+              });
+              scoresSuccess = true;
+            }
+          }
+        }
+
+        const resStandings = await fetch(`${APPS_SCRIPT_URL}?action=getStandings`);
+        if (resStandings.ok) {
+          const textStandings = await resStandings.text();
+          if (!textStandings.trim().startsWith("<") && !textStandings.includes("<html") && !textStandings.includes("<!DOCTYPE")) {
+            const liveStandings = JSON.parse(textStandings);
+            if (Array.isArray(liveStandings) && liveStandings.length > 0) {
+              setStandings(prevGroups => {
+                return prevGroups.map(group => {
+                  const updatedTeams = group.teams.map(team => {
+                    const liveTeam = liveStandings.find((t: any) => t.team === team.teamName || t.teamName === team.teamName);
+                    if (liveTeam) {
+                      return {
+                        ...team,
+                        played: liveTeam.main !== undefined ? liveTeam.main : team.played,
+                        pts: liveTeam.poin !== undefined ? liveTeam.poin : team.pts
+                      };
+                    }
+                    return team;
+                  });
+                  const sortedTeams = [...updatedTeams].sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+                  const rankedTeams = sortedTeams.map((t, idx) => ({ ...t, rank: idx + 1 }));
+                  return { ...group, teams: rankedTeams };
+                });
+              });
+              standingsSuccess = true;
+            }
+          }
+        }
+
+        if (scoresSuccess && standingsSuccess) {
+          setBulkSyncSuccess(true);
+          setIsFlashscoreDown(false);
+          setApiError(false);
+          setTimeout(() => setBulkSyncSuccess(false), 4500);
+        } else {
+          throw new Error("Gagal mengkontak Apps Script secara langsung.");
+        }
+        return;
+      }
+
       const res = await fetch("/api/matches/ai-sync-all", { method: "POST" });
       if (!res.ok) throw new Error();
       const data = await res.json();
