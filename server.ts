@@ -2135,13 +2135,13 @@ Kewajiban Mutlak:
           matchObj.awayScore = 1;
         } else if (id === "m14") {
           matchObj.homeScore = 0; // Spanyol vs Tanjung Verde
-          matchObj.awayScore = 1;
-        } else if (id === "m15") {
-          matchObj.homeScore = 1; // Iran vs Selandia Baru
           matchObj.awayScore = 0;
-        } else if (id === "m16") {
-          matchObj.homeScore = 0; // Belgia vs Mesir
+        } else if (id === "m15") {
+          matchObj.homeScore = 2; // Iran vs Selandia Baru
           matchObj.awayScore = 2;
+        } else if (id === "m16") {
+          matchObj.homeScore = 1; // Belgia vs Mesir
+          matchObj.awayScore = 1;
         }
 
         const stats = getDeterministicStats(matchObj.id, matchObj.homeTeam, matchObj.awayTeam, matchObj.homeScore, matchObj.awayScore);
