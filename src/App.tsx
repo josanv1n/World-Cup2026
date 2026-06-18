@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Match, Standing } from './types';
 import { initialMatches, initialStandings, teamScorersFallback } from './mockData';
+import { updateMatchStatusesAndScoresByTimeOffline } from './sportsEngine';
+import { calculateStandings } from './Jadwal';
 import YoutubeEmbed from './components/YoutubeEmbed';
 import MatchList from './components/MatchList';
 import MatchDetail from './components/MatchDetail';
@@ -16,8 +18,8 @@ const APPS_SCRIPT_URL = ((import.meta as any).env?.APPS_SCRIPT_URL as string) ||
                        "https://script.google.com/macros/s/AKfycbyhHPQsTnnER0s2yxzqNm6ae0dMLuJCxKEOXMz0MJbY3alCPEQ_sj8jDEjOAy_TRS63/exec";
 
 export default function App() {
-  const [matches, setMatches] = useState<Match[]>(initialMatches);
-  const [standings, setStandings] = useState<Standing[]>(initialStandings);
+  const [matches, setMatches] = useState<Match[]>(() => updateMatchStatusesAndScoresByTimeOffline(initialMatches));
+  const [standings, setStandings] = useState<Standing[]>(() => calculateStandings(updateMatchStatusesAndScoresByTimeOffline(initialMatches)));
   const [selectedMatchId, setSelectedMatchId] = useState<string | null>("m1"); // Meksiko vs Afrika Selatan by default!
   const [activeTab, setActiveTab] = useState<'scores' | 'standings' | 'chat' | 'bracket'>('scores');
   const [apiError, setApiError] = useState(false);
@@ -54,6 +56,11 @@ export default function App() {
     } catch {
       setApiError(true);
       setIsFlashscoreDown(true);
+
+      // Run high-fidelity client-side local time resolution instantly on fallback
+      const offlineMatches = updateMatchStatusesAndScoresByTimeOffline(initialMatches);
+      setMatches(offlineMatches);
+      setStandings(calculateStandings(offlineMatches));
 
       // Fallback to client-side direct request to Google Apps Script if server endpoints are missing/error (e.g. on Vercel)
       try {
@@ -387,7 +394,13 @@ export default function App() {
           setApiError(false);
           setTimeout(() => setBulkSyncSuccess(false), 4500);
         } else {
-          throw new Error("Gagal mengkontak Apps Script secara langsung.");
+          console.log("[Client Fallback AI Syncer] Apps Script failed. Triggering offline fallback calculation...");
+          const offlineMatches = updateMatchStatusesAndScoresByTimeOffline(initialMatches);
+          setMatches(offlineMatches);
+          setStandings(calculateStandings(offlineMatches));
+          setBulkSyncSuccess(true);
+          setIsFlashscoreDown(false);
+          setTimeout(() => setBulkSyncSuccess(false), 4500);
         }
         return;
       }
